@@ -434,7 +434,6 @@ export function declineRefundRequest(
 }
 
 // ─── Emails ───
-// There is no mail transport yet, so callers log these to the server console.
 
 type EmailInput = {
   studentName: string;

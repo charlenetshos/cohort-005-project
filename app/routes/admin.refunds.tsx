@@ -29,6 +29,7 @@ import { Button } from "~/components/ui/button";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { AlertTriangle, ReceiptText } from "lucide-react";
+import { sendEmail } from "~/lib/mailer.server";
 
 const refundDecisionSchema = z.discriminatedUnion("intent", [
   z.object({
@@ -126,7 +127,7 @@ export async function action({ request }: Route.ActionArgs) {
       ? buildRefundApprovedEmail(emailInput)
       : buildRefundDeclinedEmail({ ...emailInput, note: parsed.data.note });
 
-  console.log(`[email] to=${email.to} subject=${email.subject}\n${email.body}`);
+  await sendEmail(email);
 
   return { success: true, intent };
 }

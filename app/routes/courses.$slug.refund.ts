@@ -16,6 +16,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { checkRefundRequestEligibility } from "~/lib/refunds.server";
 import { parseFormData, parseParams } from "~/lib/validation";
 import { formatPrice } from "~/lib/utils";
+import { sendEmail } from "~/lib/mailer.server";
 
 const REFUND_WINDOW_DAYS = 14;
 const MAX_WATCHED_HOURS = 1;
@@ -185,9 +186,7 @@ export async function action({ params, request }: Route.ActionArgs) {
     amount: purchase.amountPaid,
   });
 
-  console.log(
-    `[email] to=${email.to} subject=${email.subject}\n${email.body}`
-  );
+  await sendEmail(email);
 
   return redirect("/settings");
 }
