@@ -1,6 +1,6 @@
 # Cadence
 
-Cadence sells video courses to students and teams. This glossary covers who uses it, course access, team licences, and refunds.
+Cadence sells video courses to students and teams. This glossary covers who uses it, course access, team licences, refunds, and telling people about it.
 
 ## Language
 
@@ -82,3 +82,13 @@ _Avoid_: Completed, Paid out
 
 **Failed Refund**:
 A Refund where the money couldn't be sent. The Refund Request stays approved, because the decision hasn't changed.
+
+### Notifications
+
+**Notification**:
+A message Cadence sends a person to tell them something that concerns them has happened.
+_Avoid_: Alert, Message, Activity
+
+**Notification Feed**:
+The place inside Cadence where a person sees their Notifications.
+_Avoid_: Inbox, Activity feed
