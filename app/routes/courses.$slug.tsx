@@ -372,7 +372,7 @@ function rateCourse(userId: number, courseId: number, rating: number) {
 }
 
 const REFUND_WINDOW_DAYS = 14;
-const REFUND_WATCH_LIMIT_SECONDS = 2 * 60 * 60;
+const REFUND_WATCH_LIMIT_SECONDS = 60 * 60;
 const REFUND_COMPLETION_LIMIT = 0.5;
 
 function getPurchaseForCourse(userId: number, courseId: number) {

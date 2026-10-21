@@ -2,7 +2,7 @@
 // warns when a learner has gone past one, but never blocks the decision.
 // Shared with the browser, so this module must stay free of server code.
 export const REFUND_WINDOW_DAYS = 14;
-export const REFUND_WATCH_LIMIT_SECONDS = 2 * 60 * 60;
+export const REFUND_WATCH_LIMIT_SECONDS = 60 * 60;
 export const REFUND_COMPLETION_LIMIT = 0.5;
 
 export type RefundWarning =

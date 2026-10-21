@@ -18,7 +18,7 @@ import { parseFormData, parseParams } from "~/lib/validation";
 import { formatPrice } from "~/lib/utils";
 
 const REFUND_WINDOW_DAYS = 14;
-const MAX_WATCHED_HOURS = 2;
+const MAX_WATCHED_HOURS = 1;
 
 const refundParamsSchema = z.object({
   slug: z.string().min(1),
@@ -156,7 +156,7 @@ export async function action({ params, request }: Route.ActionArgs) {
   }
 
   if (watchedSeconds >= MAX_WATCHED_HOURS * 60 * 60) {
-    throw data("You have watched too much of this course to request a refund.", {
+    throw data("You have watched too much of this course to get a refund.", {
       status: 403,
     });
   }
