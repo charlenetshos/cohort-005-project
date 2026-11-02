@@ -68,6 +68,16 @@ npm run dev
 
 The app will be running at `http://localhost:5173`. Use the floating DevUI panel to switch between users.
 
+### If `db:seed` fails with "Could not locate the bindings file"
+
+`better-sqlite3` needs its install script to build a native binary. If your npm config sets `ignore-scripts = true` (check with `npm config get ignore-scripts`), that script never runs, even though `better-sqlite3` is listed in `allowScripts`. Build the binary with:
+
+```bash
+npm run rebuild:sqlite
+```
+
+Run it again after every fresh install: `npm install` on a new clone, `npm ci`, or after deleting `node_modules`.
+
 ### What `fork` does
 
 `npx ai-hero-cli fork` turns your clone into your own repo:
@@ -96,6 +106,7 @@ You don't need these yet, but you'll be asked for them along the way. Both have 
 | `npm run db:generate`        | Generate a migration from the schema         |
 | `npm run db:migrate`         | Run database migrations                      |
 | `npm run db:seed`            | Reseed the database (drops and recreates it) |
+| `npm run rebuild:sqlite`     | Build `better-sqlite3`'s native binary       |
 | `npm run reset <slug>`       | Reset your repo to a lesson checkpoint       |
 | `npm run cherry-pick <slug>` | Cherry-pick a lesson's solution              |
 | `npm run pull`               | Merge the course repo's latest `main` in     |
@@ -131,6 +142,7 @@ After a reset or cherry-pick, the code may need a different database or new depe
 
 ```bash
 npm install         # if package-lock.json changed
+npm run rebuild:sqlite  # after npm install, if your npm config sets ignore-scripts
 npm run db:migrate  # if the schema changed
 npm run db:seed     # if the seed data changed
 ```
