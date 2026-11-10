@@ -5,16 +5,15 @@ import { getCurrentUserId } from "~/lib/session";
 import { db } from "~/db";
 import {
   courses,
-  coupons,
   lessons,
   modules,
-  purchases,
   refunds,
   users,
   videoWatchEvents,
   RefundStatus,
 } from "~/db/schema";
-import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { checkRefundRequestEligibility } from "~/lib/refunds.server";
 import { parseFormData, parseParams } from "~/lib/validation";
 import { formatPrice } from "~/lib/utils";
 
@@ -37,15 +36,6 @@ function getCourseBySlug(slug: string) {
   return db.select().from(courses).where(eq(courses.slug, slug)).get();
 }
 
-function getLatestPurchase(userId: number, courseId: number) {
-  return db
-    .select()
-    .from(purchases)
-    .where(and(eq(purchases.userId, userId), eq(purchases.courseId, courseId)))
-    .orderBy(sql`${purchases.createdAt} desc`)
-    .get();
-}
-
 function getLessonIdsForCourse(courseId: number): number[] {
   const rows = db
     .select({ id: lessons.id })
@@ -55,19 +45,6 @@ function getLessonIdsForCourse(courseId: number): number[] {
     .all();
 
   return rows.map((row) => row.id);
-}
-
-function getOpenRefundRequest(purchaseId: number) {
-  return db
-    .select()
-    .from(refunds)
-    .where(
-      and(
-        eq(refunds.purchaseId, purchaseId),
-        eq(refunds.status, RefundStatus.Open)
-      )
-    )
-    .get();
 }
 
 // The fourteen-day window is counted in whole days, not hours — someone who
@@ -103,7 +80,7 @@ function buildRefundRequestEmail(input: {
       `We have your refund request for "${input.courseTitle}".`,
       `The refund is for ${formatPrice(input.amount)}, the amount you paid.`,
       "",
-      "Our team reviews every refund request by hand. You do not need to do anything else — we will email you again when it is done.",
+      "Our team reviews every refund request by hand. You do not need to do anything else — we will email you again when we've reviewed it.",
       "",
       "— The Cadence team",
     ].join("\n"),
@@ -134,31 +111,16 @@ export async function action({ params, request }: Route.ActionArgs) {
     throw data("User not found", { status: 404 });
   }
 
-  const purchase = getLatestPurchase(currentUserId, course.id);
+  // Covers: no purchase of their own (which includes a learner holding a
+  // claimed Seat), already refunded, already asked, and — for a Team Licence —
+  // the buyer once any Seat on it has been claimed, by anyone, the buyer too.
+  const eligibility = checkRefundRequestEligibility(currentUserId, course.id);
 
-  if (!purchase) {
-    throw data("You have not bought this course.", { status: 403 });
+  if (!eligibility.ok) {
+    throw data(eligibility.message, { status: eligibility.status });
   }
 
-  if (getOpenRefundRequest(purchase.id)) {
-    throw data("You already have an open refund request on this purchase.", {
-      status: 409,
-    });
-  }
-
-  // A seat that came out of a team licence, and has been claimed, belongs to
-  // the team — the learner cannot hand it back on their own.
-  const claimedSeat = db
-    .select({ id: coupons.id })
-    .from(coupons)
-    .where(
-      and(eq(coupons.purchaseId, purchase.id), isNotNull(coupons.redeemedAt))
-    )
-    .get();
-
-  if (claimedSeat) {
-    throw data("A claimed team seat cannot be refunded.", { status: 403 });
-  }
+  const { purchase } = eligibility;
 
   const today = calendarDay(new Date());
   const withinRefundWindow = today <= lastDayOfWindow(purchase.createdAt);

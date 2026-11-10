@@ -5,7 +5,7 @@ import { DevUI } from "~/components/dev-ui";
 import { Toaster } from "sonner";
 import { getCurrentUserId, getDevCountry } from "~/lib/session";
 import { getCountryTierInfo, COUNTRIES } from "~/lib/ppp";
-import { eq, and, or, sql, desc } from "drizzle-orm";
+import { eq, and, or, sql, desc, isNotNull, notExists } from "drizzle-orm";
 import { db } from "~/db";
 import {
   users,
@@ -13,6 +13,7 @@ import {
   modules,
   lessons,
   lessonProgress,
+  enrollments,
   teams,
   teamMembers,
   TeamMemberRole,
@@ -164,7 +165,24 @@ function getRecentlyProgressedCourses(userId: number, limit: number = 3) {
     .innerJoin(lessons, eq(lessonProgress.lessonId, lessons.id))
     .innerJoin(modules, eq(lessons.moduleId, modules.id))
     .innerJoin(courses, eq(modules.courseId, courses.id))
-    .where(eq(lessonProgress.userId, userId))
+    .where(
+      and(
+        eq(lessonProgress.userId, userId),
+        // A refunded learner keeps their Progress but not the course.
+        notExists(
+          db
+            .select({ id: enrollments.id })
+            .from(enrollments)
+            .where(
+              and(
+                eq(enrollments.userId, userId),
+                eq(enrollments.courseId, courses.id),
+                isNotNull(enrollments.revokedAt)
+              )
+            )
+        )
+      )
+    )
     .groupBy(courses.id)
     .orderBy(desc(sql`max(${lessonProgress.id})`))
     .limit(limit)

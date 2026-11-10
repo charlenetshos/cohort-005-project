@@ -132,6 +132,9 @@ export const enrollments = sqliteTable(
       .notNull()
       .$defaultFn(() => new Date().toISOString()),
     completedAt: text("completed_at"),
+    // Set when an Admin approves a Refund Request. The row is kept so that
+    // buying again reinstates it — see docs/adr/0001.
+    revokedAt: text("revoked_at"),
   },
   (table) => [index("enrollments_course_idx").on(table.courseId)]
 );
@@ -244,6 +247,8 @@ export const refunds = sqliteTable(
     reason: text("reason").notNull(),
     // Null until someone approves — a declined request refunds nothing.
     amountRefunded: integer("amount_refunded"),
+    // The Admin's explanation to the learner. Required when declining.
+    declineNote: text("decline_note"),
     requestedAt: text("requested_at")
       .notNull()
       .$defaultFn(() => new Date().toISOString()),
@@ -288,6 +293,8 @@ export const coupons = sqliteTable("coupons", {
     .references(() => purchases.id),
   redeemedByUserId: integer("redeemed_by_user_id").references(() => users.id),
   redeemedAt: text("redeemed_at"),
+  // Set when the purchase behind this code is refunded before it was claimed.
+  voidedAt: text("voided_at"),
   createdAt: text("created_at")
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
