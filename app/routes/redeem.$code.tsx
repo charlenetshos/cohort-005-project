@@ -8,94 +8,21 @@ import { resolveCountry } from "~/lib/country.server";
 import { parseParams, parseFormData } from "~/lib/validation";
 import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
-import { Ticket, AlertCircle, CheckCircle2, Globe } from "lucide-react";
+import { Ticket, AlertCircle, CheckCircle2, Globe, Clock } from "lucide-react";
 import { data } from "react-router";
 import { db } from "~/db";
-import { purchases, coupons, courses, enrollments } from "~/db/schema";
-import { eq, and } from "drizzle-orm";
+import { purchases, courses } from "~/db/schema";
+import { eq } from "drizzle-orm";
+import { hasCourseAccess } from "~/lib/enrollments.server";
+import {
+  claimSeat,
+  getSeatCode,
+  isTeamLicenceOnHold,
+} from "~/lib/seats.server";
+import { SEAT_ON_HOLD_MESSAGE } from "~/lib/seats";
 
 function getCourseById(id: number) {
   return db.select().from(courses).where(eq(courses.id, id)).get();
-}
-
-function getCouponByCode(code: string) {
-  return db.select().from(coupons).where(eq(coupons.code, code)).get();
-}
-
-function isUserEnrolled(userId: number, courseId: number) {
-  const existing = db
-    .select()
-    .from(enrollments)
-    .where(
-      and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId))
-    )
-    .get();
-
-  return !!existing;
-}
-
-type RedeemResult =
-  | { ok: true; enrollment: typeof enrollments.$inferSelect }
-  | { ok: false; error: string };
-
-function redeemCoupon(
-  code: string,
-  userId: number,
-  userCountry: string
-): RedeemResult {
-  const coupon = getCouponByCode(code);
-  if (!coupon) {
-    return { ok: false, error: "Coupon not found" };
-  }
-
-  if (coupon.redeemedByUserId !== null) {
-    return { ok: false, error: "Coupon has already been redeemed" };
-  }
-
-  const existingEnrollment = db
-    .select()
-    .from(enrollments)
-    .where(
-      and(
-        eq(enrollments.userId, userId),
-        eq(enrollments.courseId, coupon.courseId)
-      )
-    )
-    .get();
-
-  if (existingEnrollment) {
-    return { ok: false, error: "You are already enrolled in this course" };
-  }
-
-  const purchase = db
-    .select()
-    .from(purchases)
-    .where(eq(purchases.id, coupon.purchaseId))
-    .get();
-
-  if (purchase?.country && purchase.country !== userCountry) {
-    return {
-      ok: false,
-      error:
-        "This coupon can only be redeemed from the same country as the purchaser",
-    };
-  }
-
-  db.update(coupons)
-    .set({
-      redeemedByUserId: userId,
-      redeemedAt: new Date().toISOString(),
-    })
-    .where(eq(coupons.id, coupon.id))
-    .run();
-
-  const enrollment = db
-    .insert(enrollments)
-    .values({ userId, courseId: coupon.courseId })
-    .returning()
-    .get();
-
-  return { ok: true, enrollment };
 }
 
 const redeemParamsSchema = z.object({
@@ -117,7 +44,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 export async function loader({ params, request }: Route.LoaderArgs) {
   const { code } = parseParams(params, redeemParamsSchema);
 
-  const coupon = getCouponByCode(code);
+  const coupon = getSeatCode(code);
   if (!coupon) {
     throw data("Coupon not found.", { status: 404 });
   }
@@ -135,11 +62,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
 
   const alreadyRedeemed = coupon.redeemedByUserId !== null;
-  const alreadyEnrolled = isUserEnrolled(currentUserId, coupon.courseId);
+  // The purchase behind this code was refunded before anyone claimed it.
+  const voided = !alreadyRedeemed && coupon.voidedAt !== null;
+  // The Team Licence behind this code has an Open Refund Request.
+  const onHold =
+    !alreadyRedeemed && !voided && isTeamLicenceOnHold(coupon.purchaseId);
+  const alreadyEnrolled = hasCourseAccess(currentUserId, coupon.courseId);
 
   // Check country mismatch upfront so we can show a clear message
   let countryMismatch = false;
-  if (!alreadyRedeemed && !alreadyEnrolled) {
+  if (!alreadyRedeemed && !voided && !onHold && !alreadyEnrolled) {
     const userCountry = await resolveCountry(request);
     const purchase = db
       .select()
@@ -155,6 +87,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     course: { id: course.id, title: course.title, slug: course.slug },
     code,
     alreadyRedeemed,
+    voided,
+    onHold,
     alreadyEnrolled,
     countryMismatch,
   };
@@ -176,7 +110,7 @@ export async function action({ params, request }: Route.ActionArgs) {
   }
 
   const userCountry = await resolveCountry(request);
-  const result = redeemCoupon(code, currentUserId, userCountry ?? "");
+  const result = claimSeat(code, currentUserId, userCountry ?? "");
 
   if (!result.ok) {
     return data({ error: result.error }, { status: 400 });
@@ -194,8 +128,15 @@ export default function Redeem({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { course, code, alreadyRedeemed, alreadyEnrolled, countryMismatch } =
-    loaderData;
+  const {
+    course,
+    code,
+    alreadyRedeemed,
+    voided,
+    onHold,
+    alreadyEnrolled,
+    countryMismatch,
+  } = loaderData;
   const fetcher = useFetcher();
   const isSubmitting = fetcher.state !== "idle";
 
@@ -208,7 +149,12 @@ export default function Redeem({
   }, [fetcher.data, actionData]);
 
   // Determine which state to show
-  const canRedeem = !alreadyRedeemed && !alreadyEnrolled && !countryMismatch;
+  const canRedeem =
+    !alreadyRedeemed &&
+    !voided &&
+    !onHold &&
+    !alreadyEnrolled &&
+    !countryMismatch;
 
   return (
     <div className="mx-auto max-w-2xl p-6 lg:p-8">
@@ -240,6 +186,29 @@ export default function Redeem({
               <p className="mt-2 text-sm text-muted-foreground">
                 Someone has already claimed this seat. Please ask the person who
                 shared this link for a new coupon.
+              </p>
+            </div>
+          ) : voided ? (
+            <div className="rounded-lg bg-destructive/10 p-4">
+              <div className="flex items-center justify-center gap-2 text-destructive">
+                <AlertCircle className="size-5" />
+                <span className="font-medium">
+                  This coupon is no longer valid
+                </span>
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                The purchase behind this seat was refunded. Please ask the
+                person who shared this link about getting access another way.
+              </p>
+            </div>
+          ) : onHold ? (
+            <div className="rounded-lg bg-amber-50 p-4 dark:bg-amber-900/20">
+              <div className="flex items-center justify-center gap-2 text-amber-700 dark:text-amber-400">
+                <Clock className="size-5" />
+                <span className="font-medium">This seat is on hold</span>
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {SEAT_ON_HOLD_MESSAGE}
               </p>
             </div>
           ) : alreadyEnrolled ? (

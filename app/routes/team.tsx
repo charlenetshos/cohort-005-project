@@ -4,7 +4,14 @@ import type { Route } from "./+types/team";
 import { getCurrentUserId } from "~/lib/session";
 import { Card, CardContent, CardHeader } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
-import { Users, BookOpen, Copy, Check, AlertTriangle } from "lucide-react";
+import {
+  Users,
+  BookOpen,
+  Copy,
+  Check,
+  AlertTriangle,
+  Clock,
+} from "lucide-react";
 import { data, isRouteErrorResponse } from "react-router";
 import { db } from "~/db";
 import {
@@ -16,6 +23,8 @@ import {
   TeamMemberRole,
 } from "~/db/schema";
 import { eq, and } from "drizzle-orm";
+import { teamHasOpenRefundRequest } from "~/lib/seats.server";
+import { TEAM_REFUND_OPEN_MESSAGE } from "~/lib/seats";
 
 function getTeamForAdmin(userId: number) {
   const membership = db
@@ -145,7 +154,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     };
   });
 
-  return { courseStats, couponRows };
+  const refundRequestOpen = teamHasOpenRefundRequest(team.id);
+
+  return { courseStats, couponRows, refundRequestOpen };
 }
 
 function CopyButton({ code }: { code: string }) {
@@ -181,7 +192,7 @@ function CopyButton({ code }: { code: string }) {
 }
 
 export default function Team({ loaderData }: Route.ComponentProps) {
-  const { courseStats, couponRows } = loaderData;
+  const { courseStats, couponRows, refundRequestOpen } = loaderData;
   const [courseFilter, setCourseFilter] = useState<number | "all">("all");
 
   const filteredCoupons =
@@ -205,6 +216,16 @@ export default function Team({ loaderData }: Route.ComponentProps) {
           Manage your team&apos;s course seats and coupon codes
         </p>
       </div>
+
+      {refundRequestOpen && (
+        <div
+          role="status"
+          className="mb-8 flex items-start gap-2 rounded-lg bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-900/20 dark:text-amber-200"
+        >
+          <Clock className="mt-0.5 size-4 shrink-0" />
+          <p>{TEAM_REFUND_OPEN_MESSAGE}</p>
+        </div>
+      )}
 
       {/* Per-course stats */}
       {courseStats.length > 0 && (
