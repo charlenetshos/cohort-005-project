@@ -41,7 +41,7 @@ const refundDecisionSchema = z.discriminatedUnion("intent", [
     note: z
       .string()
       .trim()
-      .min(10, "Tell the learner why — at least a sentence.")
+      .min(10, "Tell the student why — at least a sentence.")
       .max(1000, "Please keep the note under 1000 characters."),
   }),
 ]);
@@ -116,8 +116,8 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const emailInput = {
-    learnerName: result.learner.name,
-    learnerEmail: result.learner.email,
+    studentName: result.student.name,
+    studentEmail: result.student.email,
     courseTitle: result.courseTitle,
     amount: result.amount,
   };
@@ -173,12 +173,12 @@ function RefundRequestCard({ request }: { request: OpenRefundRequestRow }) {
       toast.success(
         fetcher.data.intent === "approve"
           ? request.isTeamPurchase
-            ? `Approved — ${request.learner.name}'s Seat Codes are cancelled.`
-            : `Approved — ${request.learner.name} no longer has access.`
-          : `Declined — ${request.learner.name} has been told why.`
+            ? `Approved — ${request.student.name}'s Seat Codes are cancelled.`
+            : `Approved — ${request.student.name} no longer has access.`
+          : `Declined — ${request.student.name} has been told why.`
       );
     }
-  }, [fetcher.state, fetcher.data, request.learner.name, request.isTeamPurchase]);
+  }, [fetcher.state, fetcher.data, request.student.name, request.isTeamPurchase]);
 
   return (
     <Card>
@@ -186,9 +186,9 @@ function RefundRequestCard({ request }: { request: OpenRefundRequestRow }) {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="font-semibold">
-              {request.learner.name}{" "}
+              {request.student.name}{" "}
               <span className="font-normal text-muted-foreground">
-                · {request.learner.email}
+                · {request.student.email}
               </span>
             </p>
             <p className="text-sm text-muted-foreground">
@@ -261,7 +261,7 @@ function RefundRequestCard({ request }: { request: OpenRefundRequestRow }) {
             <input type="hidden" name="intent" value="decline" />
             <input type="hidden" name="refundId" value={request.id} />
             <Label htmlFor={`note-${request.id}`}>
-              Note to the learner (required)
+              Note to the student (required)
             </Label>
             <Textarea
               id={`note-${request.id}`}
@@ -291,7 +291,7 @@ function RefundRequestCard({ request }: { request: OpenRefundRequestRow }) {
             <p className="text-sm">
               {request.isTeamPurchase
                 ? describeSeatApproval(request)
-                : `Approving ends ${request.learner.name}'s access to this course right away. Their progress is kept.`}{" "}
+                : `Approving ends ${request.student.name}'s access to this course right away. Their progress is kept.`}{" "}
               They'll get back {formatPrice(request.purchase.amountPaid)}.
             </p>
             <div className="flex gap-2">
@@ -336,7 +336,7 @@ export default function AdminRefunds({ loaderData }: Route.ComponentProps) {
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Refund Requests</h1>
         <p className="mt-1 text-muted-foreground">
-          Open requests, oldest first. Approving ends the learner&apos;s access
+          Open requests, oldest first. Approving ends the student&apos;s access
           to the course at once.
         </p>
       </div>

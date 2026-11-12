@@ -168,7 +168,7 @@ function getRecentlyProgressedCourses(userId: number, limit: number = 3) {
     .where(
       and(
         eq(lessonProgress.userId, userId),
-        // A refunded learner keeps their Progress but not the course.
+        // A refunded student keeps their Progress but not the course.
         notExists(
           db
             .select({ id: enrollments.id })

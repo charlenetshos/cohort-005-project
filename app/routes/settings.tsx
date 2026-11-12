@@ -61,7 +61,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     throw data("User not found.", { status: 404 });
   }
 
-  // Decided requests stay listed, so a learner whose access ended can see why.
+  // Decided requests stay listed, so a student whose access ended can see why.
   const refundRequests = db
     .select({
       id: refunds.id,

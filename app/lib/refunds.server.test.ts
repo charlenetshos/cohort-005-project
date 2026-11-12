@@ -87,7 +87,7 @@ describe("approving a Refund Request", () => {
     expect(refund.resolvedByUserId).toBe(admin.id);
   });
 
-  it("ends Course Access at once but keeps the learner's Progress", () => {
+  it("ends Course Access at once but keeps the student's Progress", () => {
     const purchase = insertPurchase(base.user.id);
     grantCourseAccess(base.user.id, base.course.id, asDb(testDb));
     testDb
@@ -107,7 +107,7 @@ describe("approving a Refund Request", () => {
     expect(testDb.select().from(schema.enrollments).all()).toHaveLength(1);
   });
 
-  it("lets a refunded learner buy again and pick up the same enrollment", () => {
+  it("lets a refunded student buy again and pick up the same enrollment", () => {
     const purchase = insertPurchase(base.user.id);
     const original = grantCourseAccess(base.user.id, base.course.id, asDb(testDb));
     const request = insertRefundRequest(purchase.id);
@@ -203,7 +203,7 @@ describe("the Open Refund Request queue", () => {
     expect(queue.map((row) => row.id)).toEqual([first.id, second.id]);
   });
 
-  it("shows the learner's Progress and warns about limits passed since asking", () => {
+  it("shows the student's Progress and warns about limits passed since asking", () => {
     const purchase = insertPurchase(base.user.id, "2026-11-01T10:00:00.000Z");
     insertRefundRequest(purchase.id, "2026-11-05T10:00:00.000Z");
     testDb
@@ -346,7 +346,7 @@ describe("a Team Licence's Refund Request", () => {
     });
   });
 
-  it("can't be raised by a learner holding a claimed Seat, because they have no purchase", () => {
+  it("can't be raised by a student holding a claimed Seat, because they have no purchase", () => {
     expect(claimSeat(seatCodes[0], ben.id, "", asDb(testDb)).ok).toBe(true);
 
     expect(checkRefundRequestEligibility(ben.id, base.course.id, asDb(testDb))).toEqual({
@@ -358,7 +358,7 @@ describe("a Team Licence's Refund Request", () => {
 
   it("shows the Admin the seat count and only the outside-window warning", () => {
     // Asked 20 days after buying, with the buyer's own viewing past the limits —
-    // which says nothing about a Team Licence, since she isn't a learner on it.
+    // which says nothing about a Team Licence, since she isn't a student on it.
     insertRefundRequest(licence.id, "2026-11-21T10:00:00.000Z");
     testDb
       .insert(schema.lessonProgress)

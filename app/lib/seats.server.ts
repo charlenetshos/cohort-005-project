@@ -57,7 +57,7 @@ export type ClaimSeatResult =
   | { ok: false; error: string };
 
 /**
- * Claims the Seat behind a Seat Code for a learner, granting Course Access.
+ * Claims the Seat behind a Seat Code for a student, granting Course Access.
  * Everything is checked and written in one transaction, so a Refund Request
  * raised at the same moment can't slip a claim past the on-hold check.
  */
@@ -112,7 +112,7 @@ export function claimSeat(
       .where(eq(coupons.id, coupon.id))
       .run();
 
-    // Reinstates the enrollment of a learner who was refunded earlier.
+    // Reinstates the enrollment of a student who was refunded earlier.
     const enrollment = grantCourseAccess(userId, coupon.courseId, txDb);
 
     return { ok: true, enrollment };

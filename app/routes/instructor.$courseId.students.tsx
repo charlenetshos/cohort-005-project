@@ -44,7 +44,7 @@ function getCourseEnrolledStudents(courseId: number) {
     .all();
 }
 
-// Learners whose place was taken away keep their progress, so they still show
+// Students whose place was taken away keep their progress, so they still show
 // on the roster. They have no Enrollment, so their purchase date stands in.
 function getCourseLapsedStudents(courseId: number, enrolledUserIds: number[]) {
   const lessonIds = getCourseLessonIds(courseId);

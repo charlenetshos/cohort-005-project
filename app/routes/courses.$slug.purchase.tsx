@@ -324,7 +324,7 @@ export async function action({ params, request }: Route.ActionArgs) {
       throw redirect(`/courses/${slug}`);
     }
     createPurchase(currentUserId, course.id, pppPrice, country);
-    // Reinstates the enrollment of a learner who was refunded and bought again.
+    // Reinstates the enrollment of a student who was refunded and bought again.
     grantCourseAccess(currentUserId, course.id);
     throw redirect(`/courses/${slug}/welcome`);
   }

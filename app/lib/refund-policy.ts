@@ -1,5 +1,5 @@
-// The limits a learner is held to when asking for a Refund. The Admin screen
-// warns when a learner has gone past one, but never blocks the decision.
+// The limits a student is held to when asking for a Refund. The Admin screen
+// warns when a student has gone past one, but never blocks the decision.
 // Shared with the browser, so this module must stay free of server code.
 export const REFUND_WINDOW_DAYS = 14;
 export const REFUND_WATCH_LIMIT_SECONDS = 60 * 60;

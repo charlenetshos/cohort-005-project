@@ -62,20 +62,20 @@ function lastDayOfWindow(purchasedAtIso: string): string {
 }
 
 /**
- * The confirmation the learner gets in their inbox. There is no mail
+ * The confirmation the student gets in their inbox. There is no mail
  * transport wired up yet, so the built message goes to the server log.
  */
 function buildRefundRequestEmail(input: {
-  learnerName: string;
-  learnerEmail: string;
+  studentName: string;
+  studentEmail: string;
   courseTitle: string;
   amount: number;
 }) {
   return {
-    to: input.learnerEmail,
+    to: input.studentEmail,
     subject: `Refund requested — ${input.courseTitle}`,
     body: [
-      `Hi ${input.learnerName},`,
+      `Hi ${input.studentName},`,
       "",
       `We have your refund request for "${input.courseTitle}".`,
       `The refund is for ${formatPrice(input.amount)}, the amount you paid.`,
@@ -101,17 +101,17 @@ export async function action({ params, request }: Route.ActionArgs) {
     throw data("Course not found", { status: 404 });
   }
 
-  const learner = db
+  const student = db
     .select()
     .from(users)
     .where(eq(users.id, currentUserId))
     .get();
 
-  if (!learner) {
+  if (!student) {
     throw data("User not found", { status: 404 });
   }
 
-  // Covers: no purchase of their own (which includes a learner holding a
+  // Covers: no purchase of their own (which includes a student holding a
   // claimed Seat), already refunded, already asked, and — for a Team Licence —
   // the buyer once any Seat on it has been claimed, by anyone, the buyer too.
   const eligibility = checkRefundRequestEligibility(currentUserId, course.id);
@@ -179,8 +179,8 @@ export async function action({ params, request }: Route.ActionArgs) {
     .get();
 
   const email = buildRefundRequestEmail({
-    learnerName: learner.name,
-    learnerEmail: learner.email,
+    studentName: student.name,
+    studentEmail: student.email,
     courseTitle: course.title,
     amount: purchase.amountPaid,
   });

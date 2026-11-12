@@ -40,7 +40,7 @@ export type RefundRequestEligibility =
   | { ok: false; status: 403 | 409; message: string };
 
 /**
- * Whether a learner's latest purchase of a course can get a new Refund
+ * Whether a student's latest purchase of a course can get a new Refund
  * Request. Checks who may ask, not the refund limits (window, time watched),
  * which the course page applies on top.
  */
@@ -49,7 +49,7 @@ export function checkRefundRequestEligibility(
   courseId: number,
   database: Database = defaultDb
 ): RefundRequestEligibility {
-  // A learner who claimed a Seat has no purchase of their own, so lands here.
+  // A student who claimed a Seat has no purchase of their own, so lands here.
   const purchase = database
     .select()
     .from(purchases)
@@ -109,7 +109,7 @@ export type OpenRefundRequestRow = {
   id: number;
   reason: string;
   requestedAt: string;
-  learner: { id: number; name: string; email: string };
+  student: { id: number; name: string; email: string };
   course: { id: number; title: string; slug: string };
   purchase: { id: number; amountPaid: number; createdAt: string };
   isTeamPurchase: boolean;
@@ -180,7 +180,7 @@ function getSecondsWatched(
     .reduce((total, row) => total + row.furthest, 0);
 }
 
-/** Every Open Refund Request, oldest first, with the learner's Progress. */
+/** Every Open Refund Request, oldest first, with the student's Progress. */
 export function listOpenRefundRequests(
   now: Date = new Date(),
   database: Database = defaultDb
@@ -190,9 +190,9 @@ export function listOpenRefundRequests(
       id: refunds.id,
       reason: refunds.reason,
       requestedAt: refunds.requestedAt,
-      learnerId: users.id,
-      learnerName: users.name,
-      learnerEmail: users.email,
+      studentId: users.id,
+      studentName: users.name,
+      studentEmail: users.email,
       courseId: courses.id,
       courseTitle: courses.title,
       courseSlug: courses.slug,
@@ -219,10 +219,10 @@ export function listOpenRefundRequests(
 
     const lessonsCompleted = getCompletedLessonCount(
       database,
-      row.learnerId,
+      row.studentId,
       lessonIds
     );
-    const secondsWatched = getSecondsWatched(database, row.learnerId, lessonIds);
+    const secondsWatched = getSecondsWatched(database, row.studentId, lessonIds);
     const purchasedAt = new Date(row.purchasedAt);
     const daysSincePurchase = wholeDaysBetween(purchasedAt, now);
     const daysSincePurchaseWhenRequested = wholeDaysBetween(
@@ -246,7 +246,7 @@ export function listOpenRefundRequests(
     if (daysSincePurchaseWhenRequested > REFUND_WINDOW_DAYS) {
       warnings.push("outside-window");
     }
-    // The buyer of a Team Licence isn't a learner on it, so their own viewing
+    // The buyer of a Team Licence isn't a student on it, so their own viewing
     // says nothing about the request — only the window applies.
     if (!isTeamPurchase && secondsWatched >= REFUND_WATCH_LIMIT_SECONDS) {
       warnings.push("watched-too-much");
@@ -263,10 +263,10 @@ export function listOpenRefundRequests(
       id: row.id,
       reason: row.reason,
       requestedAt: row.requestedAt,
-      learner: {
-        id: row.learnerId,
-        name: row.learnerName,
-        email: row.learnerEmail,
+      student: {
+        id: row.studentId,
+        name: row.studentName,
+        email: row.studentEmail,
       },
       course: { id: row.courseId, title: row.courseTitle, slug: row.courseSlug },
       purchase: {
@@ -294,7 +294,7 @@ export function listOpenRefundRequests(
 export type DecisionResult =
   | {
       ok: true;
-      learner: { name: string; email: string };
+      student: { name: string; email: string };
       courseTitle: string;
       amount: number;
     }
@@ -311,8 +311,8 @@ function getRequestContext(
       amountPaid: purchases.amountPaid,
       userId: purchases.userId,
       courseId: purchases.courseId,
-      learnerName: users.name,
-      learnerEmail: users.email,
+      studentName: users.name,
+      studentEmail: users.email,
       courseTitle: courses.title,
     })
     .from(refunds)
@@ -324,7 +324,7 @@ function getRequestContext(
 }
 
 /**
- * Approves an Open Refund Request. The learner loses Course Access at once
+ * Approves an Open Refund Request. The student loses Course Access at once
  * (their enrollment is revoked, their Progress kept), and any unclaimed seat
  * codes on a team purchase stop being redeemable. Only Open requests can be
  * decided — the first decision stands.
@@ -388,7 +388,7 @@ export function approveRefundRequest(
 
     return {
       ok: true,
-      learner: { name: context.learnerName, email: context.learnerEmail },
+      student: { name: context.studentName, email: context.studentEmail },
       courseTitle: context.courseTitle,
       amount: context.amountPaid,
     };
@@ -396,8 +396,8 @@ export function approveRefundRequest(
 }
 
 /**
- * Declines an Open Refund Request with a note to the learner. Course Access is
- * untouched, and the learner may raise a new Refund Request.
+ * Declines an Open Refund Request with a note to the student. Course Access is
+ * untouched, and the student may raise a new Refund Request.
  */
 export function declineRefundRequest(
   refundId: number,
@@ -426,7 +426,7 @@ export function declineRefundRequest(
 
     return {
       ok: true,
-      learner: { name: context.learnerName, email: context.learnerEmail },
+      student: { name: context.studentName, email: context.studentEmail },
       courseTitle: context.courseTitle,
       amount: context.amountPaid,
     };
@@ -437,18 +437,18 @@ export function declineRefundRequest(
 // There is no mail transport yet, so callers log these to the server console.
 
 type EmailInput = {
-  learnerName: string;
-  learnerEmail: string;
+  studentName: string;
+  studentEmail: string;
   courseTitle: string;
   amount: number;
 };
 
 export function buildRefundApprovedEmail(input: EmailInput) {
   return {
-    to: input.learnerEmail,
+    to: input.studentEmail,
     subject: `Refund approved — ${input.courseTitle}`,
     body: [
-      `Hi ${input.learnerName},`,
+      `Hi ${input.studentName},`,
       "",
       `We've approved your refund request for "${input.courseTitle}".`,
       `You'll get back ${formatPrice(input.amount)}, the full amount you paid. We'll email you again once the money has been sent.`,
@@ -462,10 +462,10 @@ export function buildRefundApprovedEmail(input: EmailInput) {
 
 export function buildRefundDeclinedEmail(input: EmailInput & { note: string }) {
   return {
-    to: input.learnerEmail,
+    to: input.studentEmail,
     subject: `Refund request declined — ${input.courseTitle}`,
     body: [
-      `Hi ${input.learnerName},`,
+      `Hi ${input.studentName},`,
       "",
       `We've reviewed your refund request for "${input.courseTitle}" and can't approve it.`,
       "",

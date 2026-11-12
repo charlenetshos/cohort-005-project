@@ -445,7 +445,7 @@ function asDayString(when: Date) {
 }
 
 /**
- * What the learner is offered if they want their money back, or null if this
+ * What the student is offered if they want their money back, or null if this
  * purchase cannot be refunded.
  */
 function getRefundOffer(userId: number, course: { id: number }) {

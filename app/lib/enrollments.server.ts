@@ -6,7 +6,7 @@ type Database = typeof defaultDb;
 
 // An enrollment row only grants Course Access while it isn't revoked. Approving
 // a Refund Request revokes it rather than deleting it, so buying again can
-// reinstate the same row with the learner's Progress intact (docs/adr/0001).
+// reinstate the same row with the student's Progress intact (docs/adr/0001).
 
 /** Matches enrollments that currently grant Course Access. */
 export const notRevoked = isNull(enrollments.revokedAt);
@@ -39,7 +39,7 @@ export function hasCourseAccess(
 
 /**
  * Grants Course Access. Reinstates a revoked enrollment if there is one,
- * otherwise creates a new one. Throws if the learner already has access.
+ * otherwise creates a new one. Throws if the student already has access.
  */
 export function grantCourseAccess(
   userId: number,

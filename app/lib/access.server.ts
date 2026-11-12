@@ -20,7 +20,7 @@ function getCourseById(id: number) {
   return db.select().from(courses).where(eq(courses.id, id)).get();
 }
 
-// The learner's latest purchase is the one that grants their current access —
+// The student's latest purchase is the one that grants their current access —
 // an earlier one may have been refunded.
 function findLatestPurchase(userId: number, courseId: number) {
   return db
