@@ -91,6 +91,28 @@ describe("notifyNewRefundRequest", () => {
     });
   });
 
+  it("does its work after the action has returned, so it never slows the action down", async () => {
+    const ada = insertUser("Ada Admin", schema.UserRole.Admin);
+    let added = 0;
+    const countingStore: NotificationStore = {
+      ...store,
+      add: async (notification) => {
+        added += 1;
+        await store.add(notification);
+      },
+    };
+
+    const sent = notifyNewRefundRequest(
+      { studentId: base.user.id, courseId: base.course.id, reason: "Not what I expected." },
+      { db: asDb(testDb), store: countingStore }
+    );
+    expect(added).toBe(0);
+
+    await sent;
+    expect(added).toBe(1);
+    expect(await store.list(ada.id)).toHaveLength(1);
+  });
+
   it("logs a failure instead of throwing", async () => {
     const ada = insertUser("Ada Admin", schema.UserRole.Admin);
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});

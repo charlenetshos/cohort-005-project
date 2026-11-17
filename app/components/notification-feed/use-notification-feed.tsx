@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { z } from "zod";
 import { KnockFeedProvider, KnockProvider, useKnockFeed } from "@knocklabs/react-core";
 import {
   KNOCK_TOKEN_ROUTE,
@@ -15,7 +16,11 @@ import {
   type FeedConfig,
 } from "~/lib/notifications/feed-config";
 import { fromKnockFeedItem, type KnockFeedItemFields } from "~/lib/notifications/knock-feed";
-import type { FeedNotification } from "~/lib/notifications/payload";
+import {
+  markings,
+  parseFeedNotifications,
+  type FeedNotification,
+} from "~/lib/notifications/payload";
 
 // ─── useNotificationFeed() ───
 // One hook for the Feed, whatever delivers the Notifications. The provider
@@ -86,13 +91,15 @@ export function NotificationFeedProvider({
 
 type KnockFeedConfig = Extract<FeedConfig, { mode: "knock" }>;
 
+const tokenResponse = z.object({ token: z.string() });
+
 async function fetchFreshToken(): Promise<string | undefined> {
   const response = await fetch(KNOCK_TOKEN_ROUTE, {
     headers: { Accept: "application/json" },
   });
   if (!response.ok) return undefined;
-  const { token } = (await response.json()) as { token: string };
-  return token;
+  const parsed = tokenResponse.safeParse(await response.json());
+  return parsed.success ? parsed.data.token : undefined;
 }
 
 function KnockFeed({ config, children }: { config: KnockFeedConfig; children: ReactNode }) {
@@ -153,6 +160,11 @@ function KnockFeedBridge({ children }: { children: ReactNode }) {
 
 const POLL_INTERVAL_MS = 5000;
 
+/** The local Feed route's response, dropping any item that is not a Notification. */
+const localFeedResponse = z.object({
+  notifications: z.array(z.unknown()).transform(parseFeedNotifications),
+});
+
 function useArrivalListeners() {
   const listeners = useRef(new Set<ArrivalListener>());
   const subscribeToArrivals = useCallback((listener: ArrivalListener) => {
@@ -175,9 +187,7 @@ function LocalFeedProvider({ children }: { children: ReactNode }) {
       headers: { Accept: "application/json" },
     });
     if (!response.ok) return;
-    const { notifications } = (await response.json()) as {
-      notifications: FeedNotification[];
-    };
+    const { notifications } = localFeedResponse.parse(await response.json());
 
     const seen = seenIds.current;
     seenIds.current = new Set(notifications.map((n) => n.id));
@@ -213,16 +223,12 @@ function LocalFeedProvider({ children }: { children: ReactNode }) {
       unreadCount: items.filter((n) => !n.readAt).length,
       markRead: (id) =>
         post({ intent: "markRead", id }, (current) =>
-          current.map((n) => (n.id === id && !n.readAt ? { ...n, readAt: now() } : n))
+          current.map(markings.read([id], now()))
         ),
       markUnread: (id) =>
-        post({ intent: "markUnread", id }, (current) =>
-          current.map((n) => (n.id === id ? { ...n, readAt: null } : n))
-        ),
+        post({ intent: "markUnread", id }, (current) => current.map(markings.unread([id]))),
       markAllRead: () =>
-        post({ intent: "markAllRead" }, (current) =>
-          current.map((n) => (n.readAt ? n : { ...n, readAt: now() }))
-        ),
+        post({ intent: "markAllRead" }, (current) => current.map(markings.read("all", now()))),
       subscribeToArrivals,
     };
   }, [items, post, subscribeToArrivals]);

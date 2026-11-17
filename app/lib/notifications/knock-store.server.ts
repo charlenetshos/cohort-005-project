@@ -1,8 +1,8 @@
 import { Knock } from "@knocklabs/node";
 import { knockUserId } from "./payload";
-import type { NotificationPerson, NotificationStore } from "./store.server";
+import type { NotificationPerson, NotificationWriter } from "./store.server";
 
-// ─── The Knock NotificationStore ───
+// ─── The Knock NotificationWriter ───
 // `add` triggers the Knock workflow named after the kind (ADR 0013). Everyone
 // is identified to Knock inline, inside the trigger, as `cadence-<id>` with
 // their name and email (ADR 0014); Cadence makes no other identify call.
@@ -35,13 +35,7 @@ function asKnockPerson(person: NotificationPerson): KnockPerson {
   return { id: knockUserId(person.id), name: person.name, email: person.email };
 }
 
-function readsFromTheBrowser(): never {
-  throw new Error(
-    "In Knock mode the Feed reads and marks Notifications in Knock from the browser"
-  );
-}
-
-export function knockStore(trigger: KnockTrigger): NotificationStore {
+export function knockStore(trigger: KnockTrigger): NotificationWriter {
   return {
     async add({ recipients, actor, payload }) {
       await trigger(payload.kind, {
@@ -50,9 +44,5 @@ export function knockStore(trigger: KnockTrigger): NotificationStore {
         data: payload.data,
       });
     },
-    list: async () => readsFromTheBrowser(),
-    markRead: async () => readsFromTheBrowser(),
-    markUnread: async () => readsFromTheBrowser(),
-    markAllRead: async () => readsFromTheBrowser(),
   };
 }

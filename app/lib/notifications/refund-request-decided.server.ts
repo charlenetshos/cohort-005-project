@@ -1,11 +1,10 @@
 import { eq } from "drizzle-orm";
 import { db as appDb } from "~/db";
-import { coupons, courses, purchases, refunds, users } from "~/db/schema";
+import { coupons, courses, purchases, refunds } from "~/db/schema";
+import { getPerson } from "./person.server";
 import { sendNotification, type AppDb, type NotifyOptions } from "./send.server";
 
 type Decision = { refundId: number; adminId: number };
-
-const person = { id: users.id, name: users.name, email: users.email };
 
 /** The decided Refund Request, who raised it and who decided it. */
 function lookUpDecision(db: AppDb, { refundId, adminId }: Decision) {
@@ -26,10 +25,8 @@ function lookUpDecision(db: AppDb, { refundId, adminId }: Decision) {
   if (!refund) throw new Error(`Refund Request ${refundId} not found`);
 
   // The Student, or the team Admin who bought the Team Licence.
-  const raisedBy = db.select(person).from(users).where(eq(users.id, refund.buyerId)).get();
-  const admin = db.select(person).from(users).where(eq(users.id, adminId)).get();
-  if (!raisedBy) throw new Error(`User ${refund.buyerId} not found`);
-  if (!admin) throw new Error(`Admin ${adminId} not found`);
+  const raisedBy = getPerson(db, refund.buyerId);
+  const admin = getPerson(db, adminId);
 
   return { refund, raisedBy, admin };
 }
@@ -41,6 +38,9 @@ export function notifyRefundRequestApproved(
 ): Promise<void> {
   return sendNotification("refund-request-approved", store, () => {
     const { refund, raisedBy, admin } = lookUpDecision(db, input);
+    if (refund.amountRefunded === null) {
+      throw new Error(`Refund Request ${input.refundId} has no amount refunded`);
+    }
     const isTeamLicence = !!db
       .select({ id: coupons.id })
       .from(coupons)
@@ -50,15 +50,12 @@ export function notifyRefundRequestApproved(
     return {
       recipients: [raisedBy],
       actor: admin,
-      payload: {
-        kind: "refund-request-approved",
-        data: {
-          courseTitle: refund.courseTitle,
-          courseSlug: refund.courseSlug,
-          amount: refund.amountRefunded ?? 0,
-          isTeamLicence,
-          url: `/courses/${refund.courseSlug}`,
-        },
+      data: {
+        courseTitle: refund.courseTitle,
+        courseSlug: refund.courseSlug,
+        amount: refund.amountRefunded,
+        isTeamLicence,
+        url: `/courses/${refund.courseSlug}`,
       },
     };
   });
@@ -71,18 +68,18 @@ export function notifyRefundRequestDeclined(
 ): Promise<void> {
   return sendNotification("refund-request-declined", store, () => {
     const { refund, raisedBy, admin } = lookUpDecision(db, input);
+    if (refund.declineNote === null) {
+      throw new Error(`Refund Request ${input.refundId} has no decline note`);
+    }
 
     return {
       recipients: [raisedBy],
       actor: admin,
-      payload: {
-        kind: "refund-request-declined",
-        data: {
-          courseTitle: refund.courseTitle,
-          courseSlug: refund.courseSlug,
-          note: refund.declineNote ?? "",
-          url: `/courses/${refund.courseSlug}`,
-        },
+      data: {
+        courseTitle: refund.courseTitle,
+        courseSlug: refund.courseSlug,
+        note: refund.declineNote,
+        url: `/courses/${refund.courseSlug}`,
       },
     };
   });

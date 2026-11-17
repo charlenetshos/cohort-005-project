@@ -1,4 +1,4 @@
-import type { FeedNotification, NotificationPayload } from "./payload";
+import { notificationPayload, type FeedNotification } from "./payload";
 
 // ─── Reading a Knock feed item as a Notification (browser-safe) ───
 // The Knock workflow key is the Notification's kind, and the trigger's data is
@@ -13,14 +13,13 @@ export type KnockFeedItemFields = {
   read_at: string | null;
 };
 
+/** The item as a Notification, or null if it is not one Cadence knows how to show. */
 export function fromKnockFeedItem(item: KnockFeedItemFields): FeedNotification | null {
-  if (!item.data) return null;
-  // Knock hands back the kind and data Cadence sent it in `add`; it cannot
-  // check them against the union, so name that trust once here.
-  const payload = { kind: item.source.key, data: item.data } as NotificationPayload;
+  const payload = notificationPayload.safeParse({ kind: item.source.key, data: item.data });
+  if (!payload.success) return null;
   return {
     id: item.id,
-    ...payload,
+    ...payload.data,
     insertedAt: item.inserted_at,
     readAt: item.read_at,
   };

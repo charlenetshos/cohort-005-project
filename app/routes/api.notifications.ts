@@ -4,7 +4,7 @@ import type { Route } from "./+types/api.notifications";
 import { getCurrentUserId } from "~/lib/session";
 import { parseFormData } from "~/lib/validation";
 import { notificationSettings } from "~/lib/notifications/settings.server";
-import { defaultStore } from "~/lib/notifications/store.server";
+import { localStore } from "~/lib/notifications/store.server";
 
 // The local Feed's resource route. Only ever reads and changes the current
 // session's own Notifications. With Knock configured the browser reads Knock
@@ -29,7 +29,7 @@ async function requireLocalFeedUser(request: Request) {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const userId = await requireLocalFeedUser(request);
-  return { notifications: await defaultStore().list(userId) };
+  return { notifications: await localStore().list(userId) };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -39,7 +39,7 @@ export async function action({ request }: Route.ActionArgs) {
     throw data("Invalid request", { status: 400 });
   }
 
-  const store = defaultStore();
+  const store = localStore();
   const mark = parsed.data;
   if (mark.intent === "markRead") await store.markRead(userId, [mark.id]);
   if (mark.intent === "markUnread") await store.markUnread(userId, [mark.id]);

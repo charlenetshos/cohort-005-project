@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestDb, seedBaseData } from "~/test/setup";
 import * as schema from "~/db/schema";
 import { approveRefundRequest, declineRefundRequest } from "~/lib/refunds.server";
@@ -53,6 +53,10 @@ beforeEach(() => {
   admin = insertUser("Ada Admin", schema.UserRole.Admin);
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("notifyRefundRequestApproved", () => {
   it("tells the Student their Refund is on its way, with the amount and the course page", async () => {
     const request = raiseRefundRequest(base.user.id);
@@ -96,6 +100,21 @@ describe("notifyRefundRequestApproved", () => {
         data: expect.objectContaining({ isTeamLicence: true, amount: 7900 }),
       }),
     ]);
+  });
+
+  it("logs a failure and sends nothing when the approval has no amount refunded", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const request = raiseRefundRequest(base.user.id);
+
+    await notifyRefundRequestApproved(
+      { refundId: request.id, adminId: admin.id },
+      { db: asDb(testDb), store }
+    );
+
+    expect(await store.list(base.user.id)).toEqual([]);
+    expect(errors).toHaveBeenCalledWith(
+      `[notifications] failed kind=refund-request-approved recipients= error=Refund Request ${request.id} has no amount refunded`
+    );
   });
 
   it("does not notify an Admin who approved their own Refund Request", async () => {
@@ -164,6 +183,21 @@ describe("notifyRefundRequestDeclined", () => {
     expect(await store.list(buyer.id)).toEqual([
       expect.objectContaining({ kind: "refund-request-declined" }),
     ]);
+  });
+
+  it("logs a failure and sends nothing when the decline has no note", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const request = raiseRefundRequest(base.user.id);
+
+    await notifyRefundRequestDeclined(
+      { refundId: request.id, adminId: admin.id },
+      { db: asDb(testDb), store }
+    );
+
+    expect(await store.list(base.user.id)).toEqual([]);
+    expect(errors).toHaveBeenCalledWith(
+      `[notifications] failed kind=refund-request-declined recipients= error=Refund Request ${request.id} has no decline note`
+    );
   });
 
   it("does not notify an Admin who declined their own Refund Request", async () => {

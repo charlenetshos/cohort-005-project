@@ -39,6 +39,30 @@ describe("fromKnockFeedItem", () => {
     ).toBe("2026-11-17T10:00:00Z");
   });
 
+  it("drops an item from a workflow Cadence has no kind for", () => {
+    expect(
+      fromKnockFeedItem({
+        id: "msg_3",
+        source: { key: "some-other-workflow" },
+        data,
+        inserted_at: "2026-11-17T09:00:00Z",
+        read_at: null,
+      })
+    ).toBeNull();
+  });
+
+  it("drops an item whose data does not match its kind", () => {
+    expect(
+      fromKnockFeedItem({
+        id: "msg_4",
+        source: { key: "new-refund-request" },
+        data: { studentName: "Liam" },
+        inserted_at: "2026-11-17T09:00:00Z",
+        read_at: null,
+      })
+    ).toBeNull();
+  });
+
   it("drops an item with no data, which Cadence cannot show", () => {
     expect(
       fromKnockFeedItem({

@@ -17,15 +17,12 @@ export function notifyQuestionReply(
     return {
       recipients: [question.author],
       actor: reply.author,
-      payload: {
-        kind: "question-reply",
-        data: {
-          replierName: reply.author.name,
-          lessonTitle: reply.lessonTitle,
-          courseTitle: reply.courseTitle,
-          replyText: reply.body,
-          url: reply.url,
-        },
+      data: {
+        replierName: reply.author.name,
+        lessonTitle: reply.lessonTitle,
+        courseTitle: reply.courseTitle,
+        replyText: reply.body,
+        url: reply.url,
       },
     };
   });

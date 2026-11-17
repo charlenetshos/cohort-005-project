@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestDb, seedBaseData } from "~/test/setup";
 import * as schema from "~/db/schema";
 import { notifyNewQuestion } from "./new-question.server";
@@ -38,6 +38,10 @@ beforeEach(() => {
   store = inMemoryStore();
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("notifyNewQuestion", () => {
   it("tells the course's Instructor, and nobody else, that a Student asked a Question", async () => {
     const question = postComment(base.user.id, "Why reset the state here?");
@@ -66,6 +70,23 @@ describe("notifyNewQuestion", () => {
     await notifyNewQuestion({ commentId: question.id }, { db: asDb(testDb), store });
 
     expect(await store.list(base.instructor.id)).toEqual([]);
+  });
+
+  it("sends nothing for a top-level comment from someone who is not a Student", async () => {
+    const errors = vi.spyOn(console, "error");
+    for (const role of [schema.UserRole.Admin, schema.UserRole.Instructor]) {
+      const commenter = testDb
+        .insert(schema.users)
+        .values({ name: `A ${role}`, email: `another-${role}@example.com`, role })
+        .returning()
+        .get();
+      const comment = postComment(commenter.id, "A note for everyone.");
+
+      await notifyNewQuestion({ commentId: comment.id }, { db: asDb(testDb), store });
+    }
+
+    expect(await store.list(base.instructor.id)).toEqual([]);
+    expect(errors).not.toHaveBeenCalled();
   });
 
   it("keeps the Question, lesson and course as they were when it was sent", async () => {

@@ -1,5 +1,7 @@
 import { db as appDb } from "~/db";
-import { getLessonComment, getPerson } from "./lesson-comment.server";
+import { UserRole } from "~/db/schema";
+import { getLessonComment } from "./lesson-comment.server";
+import { getPerson } from "./person.server";
 import { sendNotification, type NotifyOptions } from "./send.server";
 
 /** A Student asked a Question on a lesson: tell the course's Instructor. */
@@ -9,19 +11,18 @@ export function notifyNewQuestion(
 ): Promise<void> {
   return sendNotification("new-question", store, () => {
     const question = getLessonComment(db, input.commentId);
+    // Only a Student's top-level comment is a Question (GLOSSARY.md).
+    const isQuestion = question.parentId === null && question.authorRole === UserRole.Student;
 
     return {
-      recipients: [getPerson(db, question.instructorId)],
+      recipients: isQuestion ? [getPerson(db, question.instructorId)] : [],
       actor: question.author,
-      payload: {
-        kind: "new-question",
-        data: {
-          studentName: question.author.name,
-          lessonTitle: question.lessonTitle,
-          courseTitle: question.courseTitle,
-          questionText: question.body,
-          url: question.url,
-        },
+      data: {
+        studentName: question.author.name,
+        lessonTitle: question.lessonTitle,
+        courseTitle: question.courseTitle,
+        questionText: question.body,
+        url: question.url,
       },
     };
   });

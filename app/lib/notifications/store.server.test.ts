@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -74,6 +74,21 @@ describe("localFileStore", () => {
     expect(feed.map((n) => n.kind === "new-refund-request" && n.data.reason)).toEqual([
       "Second.",
       "First.",
+    ]);
+  });
+
+  it("skips anything in a recipient's file that is not a Notification", async () => {
+    await store.add({ recipients: [ada], actor: liam, payload: refundRequest("Kept.") });
+    const file = join(directory, "cadence-7.json");
+    const written = JSON.parse(readFileSync(file, "utf8"));
+    writeFileSync(
+      file,
+      JSON.stringify([...written, { id: "x", kind: "new-refund-request", data: {} }, "junk"])
+    );
+
+    const feed = await store.list(ada.id);
+    expect(feed).toEqual([
+      expect.objectContaining({ ...refundRequest("Kept."), readAt: null }),
     ]);
   });
 

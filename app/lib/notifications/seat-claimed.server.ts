@@ -1,9 +1,8 @@
 import { and, count, eq, isNotNull } from "drizzle-orm";
 import { db as appDb } from "~/db";
-import { coupons, courses, purchases, users } from "~/db/schema";
+import { coupons, courses, purchases } from "~/db/schema";
+import { getPerson } from "./person.server";
 import { sendNotification, type NotifyOptions } from "./send.server";
-
-const person = { id: users.id, name: users.name, email: users.email };
 
 /**
  * Someone claimed the Seat behind a Seat Code: tell the team Admin who bought
@@ -21,15 +20,9 @@ export function notifySeatClaimed(
       throw new Error(`Seat Code ${input.code} has not been claimed`);
     }
 
-    const claimer = db
-      .select(person)
-      .from(users)
-      .where(eq(users.id, seatCode.redeemedByUserId))
-      .get();
-    const buyer = db
-      .select(person)
+    const licence = db
+      .select({ buyerId: purchases.userId })
       .from(purchases)
-      .innerJoin(users, eq(purchases.userId, users.id))
       .where(eq(purchases.id, seatCode.purchaseId))
       .get();
     const course = db
@@ -37,9 +30,10 @@ export function notifySeatClaimed(
       .from(courses)
       .where(eq(courses.id, seatCode.courseId))
       .get();
-    if (!claimer) throw new Error(`Student ${seatCode.redeemedByUserId} not found`);
-    if (!buyer) throw new Error(`Team Licence ${seatCode.purchaseId} not found`);
+    if (!licence) throw new Error(`Team Licence ${seatCode.purchaseId} not found`);
     if (!course) throw new Error(`Course ${seatCode.courseId} not found`);
+    const claimer = getPerson(db, seatCode.redeemedByUserId);
+    const buyer = getPerson(db, licence.buyerId);
 
     const onLicence = eq(coupons.purchaseId, seatCode.purchaseId);
     const [{ total }] = db.select({ total: count() }).from(coupons).where(onLicence).all();
@@ -52,15 +46,12 @@ export function notifySeatClaimed(
     return {
       recipients: [buyer],
       actor: claimer,
-      payload: {
-        kind: "seat-claimed",
-        data: {
-          claimerName: claimer.name,
-          courseTitle: course.title,
-          claimed,
-          total,
-          url: "/team",
-        },
+      data: {
+        claimerName: claimer.name,
+        courseTitle: course.title,
+        claimed,
+        total,
+        url: "/team",
       },
     };
   });

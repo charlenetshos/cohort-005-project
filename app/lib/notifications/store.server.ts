@@ -3,6 +3,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   knockUserId,
+  markings,
+  parseFeedNotifications,
   type FeedNotification,
   type NotificationPayload,
 } from "./payload";
@@ -24,8 +26,16 @@ export type NewNotification = {
   payload: NotificationPayload;
 };
 
-export interface NotificationStore {
+/** Where the notify functions send Notifications: Knock, or the local store. */
+export interface NotificationWriter {
   add(notification: NewNotification): Promise<void>;
+}
+
+/**
+ * Reads and marks one recipient's Feed. Only the local store does this on the
+ * server; with Knock the browser reads and marks Knock directly.
+ */
+export interface NotificationFeedReader {
   /** The recipient's Notifications, newest first. */
   list(recipientId: number): Promise<FeedNotification[]>;
   markRead(recipientId: number, ids: string[]): Promise<void>;
@@ -33,18 +43,22 @@ export interface NotificationStore {
   markAllRead(recipientId: number): Promise<void>;
 }
 
-type Shelf = {
-  read(key: string): FeedNotification[];
-  write(key: string, items: FeedNotification[]): void;
+/** A store that keeps the Feeds itself (local files, or memory in tests). */
+export type NotificationStore = NotificationWriter & NotificationFeedReader;
+
+/** Each recipient's Feed, newest first, kept under their Knock user id. */
+type FeedsByRecipient = {
+  read(knockUserId: string): FeedNotification[];
+  write(knockUserId: string, feed: FeedNotification[]): void;
 };
 
-function storeOnShelf(shelf: Shelf): NotificationStore {
+function storeKeepingFeedsIn(feeds: FeedsByRecipient): NotificationStore {
   function update(
     recipientId: number,
     change: (item: FeedNotification) => FeedNotification
   ) {
     const key = knockUserId(recipientId);
-    shelf.write(key, shelf.read(key).map(change));
+    feeds.write(key, feeds.read(key).map(change));
   }
 
   return {
@@ -58,58 +72,56 @@ function storeOnShelf(shelf: Shelf): NotificationStore {
           insertedAt,
           readAt: null,
         };
-        shelf.write(key, [item, ...shelf.read(key)]);
+        feeds.write(key, [item, ...feeds.read(key)]);
       }
     },
     async list(recipientId) {
-      return shelf.read(knockUserId(recipientId));
+      return feeds.read(knockUserId(recipientId));
     },
     async markRead(recipientId, ids) {
-      const now = new Date().toISOString();
-      update(recipientId, (item) =>
-        ids.includes(item.id) && !item.readAt ? { ...item, readAt: now } : item
-      );
+      update(recipientId, markings.read(ids, new Date().toISOString()));
     },
     async markUnread(recipientId, ids) {
-      update(recipientId, (item) =>
-        ids.includes(item.id) ? { ...item, readAt: null } : item
-      );
+      update(recipientId, markings.unread(ids));
     },
     async markAllRead(recipientId) {
-      const now = new Date().toISOString();
-      update(recipientId, (item) => (item.readAt ? item : { ...item, readAt: now }));
+      update(recipientId, markings.read("all", new Date().toISOString()));
     },
   };
 }
 
 export function localFileStore(directory: string): NotificationStore {
   const fileFor = (key: string) => join(directory, `${key}.json`);
-  return storeOnShelf({
+  return storeKeepingFeedsIn({
     read(key) {
       const file = fileFor(key);
       if (!existsSync(file)) return [];
-      return JSON.parse(readFileSync(file, "utf8")) as FeedNotification[];
+      return parseFeedNotifications(JSON.parse(readFileSync(file, "utf8")));
     },
-    write(key, items) {
+    write(key, feed) {
       mkdirSync(directory, { recursive: true });
-      writeFileSync(fileFor(key), JSON.stringify(items, null, 2));
+      writeFileSync(fileFor(key), JSON.stringify(feed, null, 2));
     },
   });
 }
 
 export function inMemoryStore(): NotificationStore {
-  const shelves = new Map<string, FeedNotification[]>();
-  return storeOnShelf({
-    read: (key) => shelves.get(key) ?? [],
-    write: (key, items) => void shelves.set(key, items),
+  const feeds = new Map<string, FeedNotification[]>();
+  return storeKeepingFeedsIn({
+    read: (key) => feeds.get(key) ?? [],
+    write: (key, feed) => void feeds.set(key, feed),
   });
 }
 
 export const LOCAL_NOTIFICATIONS_DIRECTORY = ".notifications";
 
-export function defaultStore(): NotificationStore {
-  if (notificationSettings.mode === "local") {
-    return localFileStore(LOCAL_NOTIFICATIONS_DIRECTORY);
-  }
+/** The local files in `.notifications/`, for the local Feed's route. */
+export function localStore(): NotificationStore {
+  return localFileStore(LOCAL_NOTIFICATIONS_DIRECTORY);
+}
+
+/** Where Notifications go in this mode: Knock, or the local files. */
+export function defaultStore(): NotificationWriter {
+  if (notificationSettings.mode === "local") return localStore();
   return knockStore(knockApiTrigger(notificationSettings.secretApiKey));
 }
