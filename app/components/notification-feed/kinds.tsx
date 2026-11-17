@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { ReceiptText, type LucideIcon } from "lucide-react";
+import { CircleDollarSign, XCircle } from "lucide-react";
+import { formatPrice } from "~/lib/utils";
 import type {
   FeedNotification,
   NotificationKind,
@@ -40,6 +42,38 @@ const KINDS: { [K in NotificationKind]: KindEntry<K> } = {
       ),
       summary: `${studentName} asked for a Refund on ${courseTitle}`,
       quote: reason,
+    }),
+  },
+  // ── refund-request-approved ──
+  "refund-request-approved": {
+    icon: CircleDollarSign,
+    view: ({ courseTitle, amount, isTeamLicence }) => {
+      const detail = `${formatPrice(amount)} is on its way back to you.${
+        isTeamLicence ? " Its Seat Codes no longer work." : ""
+      }`;
+      return {
+        headline: (
+          <>
+            Your Refund Request for <strong>{courseTitle}</strong> was approved:{" "}
+            {detail}
+          </>
+        ),
+        summary: `Your Refund Request for ${courseTitle} was approved: ${detail}`,
+      };
+    },
+  },
+  // ── refund-request-declined ──
+  "refund-request-declined": {
+    icon: XCircle,
+    view: ({ courseTitle, note }) => ({
+      headline: (
+        <>
+          Your Refund Request for <strong>{courseTitle}</strong> was declined
+        </>
+      ),
+      summary: `Your Refund Request for ${courseTitle} was declined`,
+      quote: note,
+      meta: "You can raise a new Refund Request from the course page.",
     }),
   },
   // ── more kinds go here, one entry each ──

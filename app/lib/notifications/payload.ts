@@ -17,6 +17,28 @@ export type NotificationPayload =
         reason: string;
         url: string;
       };
+    }
+  // ── refund-request-approved: an Admin approved a Refund Request → whoever raised it ──
+  | {
+      kind: "refund-request-approved";
+      data: {
+        courseTitle: string;
+        courseSlug: string;
+        /** Cents refunded. */
+        amount: number;
+        isTeamLicence: boolean;
+        url: string;
+      };
+    }
+  // ── refund-request-declined: an Admin declined a Refund Request → whoever raised it ──
+  | {
+      kind: "refund-request-declined";
+      data: {
+        courseTitle: string;
+        courseSlug: string;
+        note: string;
+        url: string;
+      };
     };
 // ── more kinds go here, one variant each ──
 
