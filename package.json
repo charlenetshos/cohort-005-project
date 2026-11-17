@@ -18,10 +18,12 @@
     "db:generate": "drizzle-kit generate",
     "db:seed": "tsx scripts/seed.ts",
     "db:migrate": "drizzle-kit migrate",
-    "loc": "git ls-files | grep -vE '(lock|.db|_snapshot.json)' | xargs wc -l"
+    "loc": "git ls-files | grep -vE '(lock|.db|_snapshot.json)' | xargs wc -l",
+    "knock:check": "tsx --env-file=.env scripts/knock-check.prototype.ts"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
+    "@knocklabs/node": "^1.41.1",
     "@monaco-editor/react": "^4.7.0",
     "@react-router/node": "8.3.0",
     "@react-router/serve": "8.3.0",

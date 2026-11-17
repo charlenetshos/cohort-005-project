@@ -17,6 +17,7 @@ import { checkRefundRequestEligibility } from "~/lib/refunds.server";
 import { parseFormData, parseParams } from "~/lib/validation";
 import { formatPrice } from "~/lib/utils";
 import { sendEmail } from "~/lib/mailer.server";
+import { notifyAdminsOfNewRefundRequest } from "~/lib/knock.prototype.server";
 
 const REFUND_WINDOW_DAYS = 14;
 const MAX_WATCHED_HOURS = 1;
@@ -169,7 +170,7 @@ export async function action({ params, request }: Route.ActionArgs) {
     return data({ errors: parsed.errors }, { status: 400 });
   }
 
-  db
+  const refund = db
     .insert(refunds)
     .values({
       purchaseId: purchase.id,
@@ -178,6 +179,15 @@ export async function action({ params, request }: Route.ActionArgs) {
     })
     .returning()
     .get();
+
+  // PROTOTYPE (issue #24): new Refund Request → Admins, via Knock.
+  await notifyAdminsOfNewRefundRequest({
+    refundId: refund.id,
+    student: { id: student.id, name: student.name, email: student.email },
+    courseTitle: course.title,
+    courseSlug: course.slug,
+    reason: parsed.data.reason,
+  });
 
   const email = buildRefundRequestEmail({
     studentName: student.name,
