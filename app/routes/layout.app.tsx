@@ -3,6 +3,17 @@ import type { Route } from "./+types/layout.app";
 import { Sidebar } from "~/components/sidebar";
 import { DevUI } from "~/components/dev-ui";
 import { Toaster } from "sonner";
+// PROTOTYPE (Notification Feed) — throwaway
+import { useEffect } from "react";
+import { getPrototypeFeed } from "~/lib/notification-feed.prototype.server";
+import {
+  feed,
+  useVariant,
+  PrototypeSwitcher,
+  VariantABell,
+  VariantBNavItem,
+  VariantCNavLink,
+} from "~/components/notification-feed.prototype";
 import { getCurrentUserId, getDevCountry } from "~/lib/session";
 import { getCountryTierInfo, COUNTRIES } from "~/lib/ppp";
 import { eq, and, or, sql, desc, isNotNull, notExists } from "drizzle-orm";
@@ -231,6 +242,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     countryTierInfo,
     countries: COUNTRIES,
     isTeamAdmin: currentUserId ? isTeamAdmin(currentUserId) : false,
+    // PROTOTYPE (Notification Feed) — throwaway
+    prototypeFeed:
+      currentUser && currentUserId
+        ? getPrototypeFeed(currentUserId, currentUser.role, isTeamAdmin(currentUserId))
+        : null,
   };
 }
 
@@ -243,7 +259,15 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
     countryTierInfo,
     countries,
     isTeamAdmin: userIsTeamAdmin,
+    prototypeFeed,
   } = loaderData;
+
+  // PROTOTYPE (Notification Feed) — throwaway
+  const variant = useVariant();
+  useEffect(() => {
+    if (currentUser && prototypeFeed)
+      feed.seed(currentUser.id, prototypeFeed.seed, prototypeFeed.ctx, prototypeFeed.kinds);
+  }, [currentUser, prototypeFeed]);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -251,6 +275,14 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
         currentUser={currentUser}
         recentCourses={recentCourses}
         isTeamAdmin={userIsTeamAdmin}
+        headerExtra={currentUser && variant === "A" ? <VariantABell /> : null}
+        navExtra={
+          currentUser && variant === "B" ? (
+            <VariantBNavItem />
+          ) : currentUser && variant === "C" ? (
+            <VariantCNavLink />
+          ) : null
+        }
       />
       <main className="flex-1 overflow-y-auto">
         <Outlet />
@@ -263,6 +295,7 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
         countries={countries}
       />
       <Toaster position="bottom-right" richColors closeButton />
+      {currentUser && <PrototypeSwitcher />}
     </div>
   );
 }
