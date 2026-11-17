@@ -16,3 +16,6 @@ export type FeedConfig =
 
 /** The resource route the local Feed polls and posts to. */
 export const LOCAL_FEED_ROUTE = "/api/notifications";
+
+/** The resource route the Knock Feed calls for a fresh token before the old one expires. */
+export const KNOCK_TOKEN_ROUTE = "/api/notifications/token";

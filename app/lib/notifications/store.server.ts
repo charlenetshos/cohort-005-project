@@ -6,6 +6,7 @@ import {
   type FeedNotification,
   type NotificationPayload,
 } from "./payload";
+import { knockApiTrigger, knockStore } from "./knock-store.server";
 import { notificationSettings } from "./settings.server";
 
 // ─── Where Notifications go ───
@@ -110,6 +111,5 @@ export function defaultStore(): NotificationStore {
   if (notificationSettings.mode === "local") {
     return localFileStore(LOCAL_NOTIFICATIONS_DIRECTORY);
   }
-  // The Knock store arrives with the Knock mode ticket (#26).
-  throw new Error("The Knock NotificationStore is not built yet");
+  return knockStore(knockApiTrigger(notificationSettings.secretApiKey));
 }
