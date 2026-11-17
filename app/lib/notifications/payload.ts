@@ -17,6 +17,40 @@ export type NotificationPayload =
         reason: string;
         url: string;
       };
+    }
+  // ── new-question: a Student asked a Question on a lesson → the course's Instructor ──
+  | {
+      kind: "new-question";
+      data: {
+        studentName: string;
+        lessonTitle: string;
+        courseTitle: string;
+        questionText: string;
+        url: string;
+      };
+    }
+  // ── question-reply: someone replied to a Question → the Question's author ──
+  | {
+      kind: "question-reply";
+      data: {
+        replierName: string;
+        lessonTitle: string;
+        courseTitle: string;
+        replyText: string;
+        url: string;
+      };
+    }
+  // ── seat-claimed: someone claimed a Seat on a Team Licence → the team Admin who bought it ──
+  | {
+      kind: "seat-claimed";
+      data: {
+        claimerName: string;
+        courseTitle: string;
+        /** Seats claimed on the Team Licence, this one included, at that moment. */
+        claimed: number;
+        total: number;
+        url: string;
+      };
     };
 // ── more kinds go here, one variant each ──
 

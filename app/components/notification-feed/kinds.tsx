@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ReceiptText, type LucideIcon } from "lucide-react";
+import { MessageSquare, ReceiptText, UserPlus, type LucideIcon } from "lucide-react";
 import type {
   FeedNotification,
   NotificationKind,
@@ -40,6 +40,49 @@ const KINDS: { [K in NotificationKind]: KindEntry<K> } = {
       ),
       summary: `${studentName} asked for a Refund on ${courseTitle}`,
       quote: reason,
+    }),
+  },
+  // ── new-question ──
+  "new-question": {
+    icon: MessageSquare,
+    view: ({ studentName, lessonTitle, courseTitle, questionText }) => ({
+      headline: (
+        <>
+          <strong>{studentName}</strong> asked a Question on{" "}
+          <strong>{lessonTitle}</strong>
+        </>
+      ),
+      summary: `${studentName} asked a Question on ${lessonTitle}`,
+      quote: questionText,
+      meta: courseTitle,
+    }),
+  },
+  // ── question-reply ──
+  "question-reply": {
+    icon: MessageSquare,
+    view: ({ replierName, lessonTitle, courseTitle, replyText }) => ({
+      headline: (
+        <>
+          <strong>{replierName}</strong> replied to your Question on{" "}
+          <strong>{lessonTitle}</strong>
+        </>
+      ),
+      summary: `${replierName} replied to your Question on ${lessonTitle}`,
+      quote: replyText,
+      meta: courseTitle,
+    }),
+  },
+  // ── seat-claimed ──
+  "seat-claimed": {
+    icon: UserPlus,
+    view: ({ claimerName, courseTitle, claimed, total }) => ({
+      headline: (
+        <>
+          <strong>{claimerName}</strong> claimed a Seat on{" "}
+          <strong>{courseTitle}</strong>: {claimed} of {total} Seats claimed
+        </>
+      ),
+      summary: `${claimerName} claimed a Seat on ${courseTitle}: ${claimed} of ${total} Seats claimed`,
     }),
   },
   // ── more kinds go here, one entry each ──
