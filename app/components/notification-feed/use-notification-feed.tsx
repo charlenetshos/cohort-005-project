@@ -8,14 +8,20 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { LOCAL_FEED_ROUTE, type FeedConfig } from "~/lib/notifications/feed-config";
+import { KnockFeedProvider, KnockProvider, useKnockFeed } from "@knocklabs/react-core";
+import {
+  KNOCK_TOKEN_ROUTE,
+  LOCAL_FEED_ROUTE,
+  type FeedConfig,
+} from "~/lib/notifications/feed-config";
+import { fromKnockFeedItem, type KnockFeedItemFields } from "~/lib/notifications/knock-feed";
 import type { FeedNotification } from "~/lib/notifications/payload";
 
 // ─── useNotificationFeed() ───
 // One hook for the Feed, whatever delivers the Notifications. The provider
 // picks the version from the layout loader's FeedConfig:
 //   local — polls the local resource route every 5 seconds
-//   knock — Knock's headless hooks (arrives with #26)
+//   knock — Knock's headless hooks, real time over Knock's socket
 // Key the provider by user id so a DevUI user switch remounts it.
 
 export type NotificationFeed = {
@@ -69,8 +75,78 @@ export function NotificationFeedProvider({
   if (config.mode === "local") {
     return <LocalFeedProvider>{children}</LocalFeedProvider>;
   }
-  // Knock mode arrives with #26.
-  return <>{children}</>;
+  return <KnockFeed config={config}>{children}</KnockFeed>;
+}
+
+// ─── Knock version ───
+// Knock's headless hooks, authenticated with the token the server signed for
+// this user (enhanced security mode). The user is already known to Knock from
+// the trigger call, so the browser makes no identify call. Before the token
+// expires, the refresh route signs a fresh one for the session's user.
+
+type KnockFeedConfig = Extract<FeedConfig, { mode: "knock" }>;
+
+async function fetchFreshToken(): Promise<string | undefined> {
+  const response = await fetch(KNOCK_TOKEN_ROUTE, {
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) return undefined;
+  const { token } = (await response.json()) as { token: string };
+  return token;
+}
+
+function KnockFeed({ config, children }: { config: KnockFeedConfig; children: ReactNode }) {
+  return (
+    <KnockProvider
+      apiKey={config.publicKey}
+      user={{ id: config.userId }}
+      identificationStrategy="skip"
+      userToken={config.token}
+      onUserTokenExpiring={fetchFreshToken}
+    >
+      <KnockFeedProvider feedId={config.channelId}>
+        <KnockFeedBridge>{children}</KnockFeedBridge>
+      </KnockFeedProvider>
+    </KnockProvider>
+  );
+}
+
+function toNotifications(items: KnockFeedItemFields[]): FeedNotification[] {
+  return items.flatMap((item) => fromKnockFeedItem(item) ?? []);
+}
+
+function KnockFeedBridge({ children }: { children: ReactNode }) {
+  const { feedClient, useFeedStore } = useKnockFeed();
+  const knockItems = useFeedStore((state) => state.items);
+  const unreadCount = useFeedStore((state) => state.metadata.unread_count);
+  const { subscribeToArrivals, announce } = useArrivalListeners();
+
+  useEffect(() => {
+    void feedClient.fetch();
+  }, [feedClient]);
+
+  useEffect(() => {
+    const onRealtime = ({ items }: { items: KnockFeedItemFields[] }) =>
+      toNotifications(items)
+        .filter((n) => !n.readAt)
+        .forEach(announce);
+    feedClient.on("items.received.realtime", onRealtime);
+    return () => feedClient.off("items.received.realtime", onRealtime);
+  }, [feedClient, announce]);
+
+  const value = useMemo<FeedContextValue>(() => {
+    const withId = (id: string) => knockItems.filter((item) => item.id === id);
+    return {
+      items: toNotifications(knockItems),
+      unreadCount,
+      markRead: (id) => void feedClient.markAsRead(withId(id)),
+      markUnread: (id) => void feedClient.markAsUnread(withId(id)),
+      markAllRead: () => void feedClient.markAllAsRead(),
+      subscribeToArrivals,
+    };
+  }, [knockItems, unreadCount, feedClient, subscribeToArrivals]);
+
+  return <FeedContext.Provider value={value}>{children}</FeedContext.Provider>;
 }
 
 // ─── Local version ───

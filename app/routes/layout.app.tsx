@@ -235,7 +235,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     countries: COUNTRIES,
     isTeamAdmin: currentUserId ? isTeamAdmin(currentUserId) : false,
     // Nothing for a logged-out visitor: no bell.
-    notificationFeed: currentUser ? getFeedConfig(currentUser.id) : null,
+    notificationFeed: currentUser ? await getFeedConfig(currentUser.id) : null,
   };
 }
 
@@ -256,7 +256,7 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
       currentUser={currentUser}
       recentCourses={recentCourses}
       isTeamAdmin={userIsTeamAdmin}
-      headerAction={notificationFeed?.mode === "local" ? <NotificationBell /> : null}
+      headerAction={notificationFeed ? <NotificationBell /> : null}
     />
   );
 
