@@ -10,6 +10,8 @@ import {
   type RenderedComment,
 } from "~/components/comment-thread";
 import { MIN_COMMENT_LENGTH, MAX_COMMENT_LENGTH } from "~/lib/comments";
+import { notifyNewQuestion } from "~/lib/notifications/new-question.server";
+import { notifyQuestionReply } from "~/lib/notifications/question-reply.server";
 import { db } from "~/db";
 import {
   categories,
@@ -900,12 +902,19 @@ export async function action({ params, request }: Route.ActionArgs) {
         if (!parsed.success) {
           return { ok: false, error: "Enter a comment before posting." };
         }
-        createComment(
+        const comment = createComment(
           currentUserId,
           lessonId,
           parsed.data.parentId ?? null,
           parsed.data.body
         );
+        // Not awaited: a Notification never fails or slows down posting.
+        // It catches and logs its own errors.
+        if (comment.parentId === null) {
+          void notifyNewQuestion({ commentId: comment.id });
+        } else {
+          void notifyQuestionReply({ commentId: comment.id });
+        }
         return { ok: true };
       }
 
