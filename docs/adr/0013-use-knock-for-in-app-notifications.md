@@ -1,10 +1,10 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # Use Knock for in-app Notifications
 
-Cadence sends its Notifications through Knock and builds the Notification Feed on Knock's realtime in-app feed, because the company already uses Knock. This is proposed, not accepted: it becomes accepted only if a working prototype of Knock in Cadence shows it fits. If the prototype says otherwise, a Cadence-owned feed is the fallback. A Cadence-owned feed in SQLite would have been cheaper and would have worked without credentials, but we chose not to run a second notification system alongside the one the company already has.
+Cadence sends its Notifications through Knock and builds the Notification Feed on Knock's realtime in-app feed, because the company already uses Knock. A prototype confirmed it fits: a real Refund Request in Cadence triggered a Knock workflow that delivered to the Admins' in-app feed (branch `prototype/knock-trigger`). A Cadence-owned feed in SQLite would have been cheaper and would have worked without credentials, but we chose not to run a second notification system alongside the one the company already has.
 
 ## Considered Options
 
