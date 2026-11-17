@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
-import { ReceiptText, type LucideIcon } from "lucide-react";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, ReceiptText, UserPlus, type LucideIcon } from "lucide-react";
 import type {
   FeedNotification,
   NotificationKind,
@@ -71,6 +70,19 @@ const KINDS: { [K in NotificationKind]: KindEntry<K> } = {
       summary: `${replierName} replied to your Question on ${lessonTitle}`,
       quote: replyText,
       meta: courseTitle,
+    }),
+  },
+  // ── seat-claimed ──
+  "seat-claimed": {
+    icon: UserPlus,
+    view: ({ claimerName, courseTitle, claimed, total }) => ({
+      headline: (
+        <>
+          <strong>{claimerName}</strong> claimed a Seat on{" "}
+          <strong>{courseTitle}</strong>: {claimed} of {total} Seats claimed
+        </>
+      ),
+      summary: `${claimerName} claimed a Seat on ${courseTitle}: ${claimed} of ${total} Seats claimed`,
     }),
   },
   // ── more kinds go here, one entry each ──

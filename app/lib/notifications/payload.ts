@@ -39,6 +39,18 @@ export type NotificationPayload =
         replyText: string;
         url: string;
       };
+    }
+  // ── seat-claimed: someone claimed a Seat on a Team Licence → the team Admin who bought it ──
+  | {
+      kind: "seat-claimed";
+      data: {
+        claimerName: string;
+        courseTitle: string;
+        /** Seats claimed on the Team Licence, this one included, at that moment. */
+        claimed: number;
+        total: number;
+        url: string;
+      };
     };
 // ── more kinds go here, one variant each ──
 
