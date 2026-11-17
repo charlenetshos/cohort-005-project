@@ -32,7 +32,7 @@ afterEach(() => {
 });
 
 describe("notifyNewRefundRequest", () => {
-  it("tells every Admin, and nobody else, that the Student asked for a Refund", async () => {
+  it("tells every Admin, and nobody else, that the Student raised a Refund Request", async () => {
     const ada = insertUser("Ada Admin", schema.UserRole.Admin);
     const bea = insertUser("Bea Admin", schema.UserRole.Admin);
 

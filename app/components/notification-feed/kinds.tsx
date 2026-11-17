@@ -36,11 +36,11 @@ const KINDS: { [K in NotificationKind]: KindEntry<K> } = {
     view: ({ studentName, courseTitle, reason }) => ({
       headline: (
         <>
-          <strong>{studentName}</strong> asked for a Refund on{" "}
+          <strong>{studentName}</strong> raised a Refund Request for{" "}
           <strong>{courseTitle}</strong>
         </>
       ),
-      summary: `${studentName} asked for a Refund on ${courseTitle}`,
+      summary: `${studentName} raised a Refund Request for ${courseTitle}`,
       quote: reason,
     }),
   },
