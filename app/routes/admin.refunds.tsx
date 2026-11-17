@@ -30,6 +30,10 @@ import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { AlertTriangle, ReceiptText } from "lucide-react";
 import { sendEmail } from "~/lib/mailer.server";
+import {
+  notifyRefundRequestApproved,
+  notifyRefundRequestDeclined,
+} from "~/lib/notifications/refund-request-decided.server";
 
 const refundDecisionSchema = z.discriminatedUnion("intent", [
   z.object({
@@ -115,6 +119,13 @@ export async function action({ request }: Route.ActionArgs) {
       { status: result.error === "already-decided" ? 409 : 404 }
     );
   }
+
+  // Not awaited: a Notification never fails or slows down the decision.
+  // It catches and logs its own errors.
+  const decision = { refundId, adminId: admin.id };
+  void (intent === "approve"
+    ? notifyRefundRequestApproved(decision)
+    : notifyRefundRequestDeclined(decision));
 
   const emailInput = {
     studentName: result.student.name,

@@ -20,6 +20,7 @@ import {
   isTeamLicenceOnHold,
 } from "~/lib/seats.server";
 import { SEAT_ON_HOLD_MESSAGE } from "~/lib/seats";
+import { notifySeatClaimed } from "~/lib/notifications/seat-claimed.server";
 
 function getCourseById(id: number) {
   return db.select().from(courses).where(eq(courses.id, id)).get();
@@ -115,6 +116,10 @@ export async function action({ params, request }: Route.ActionArgs) {
   if (!result.ok) {
     return data({ error: result.error }, { status: 400 });
   }
+
+  // Not awaited: a Notification never fails or slows down claiming a Seat.
+  // It catches and logs its own errors.
+  void notifySeatClaimed({ code });
 
   const course = getCourseById(result.enrollment.courseId);
   if (!course) {

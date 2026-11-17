@@ -32,6 +32,10 @@ _Avoid_: Completion (for the whole record)
 Seconds of video a Student has actually played in a course: the furthest point reached in each lesson, added up. Not lessons opened.
 _Avoid_: Viewed, Progress
 
+**Question**:
+A top-level comment a Student posts on a lesson. An Instructor answers it by replying.
+_Avoid_: Comment (for the top-level post), Thread
+
 **Lapsed**:
 A Student on an Instructor's roster who has Progress in a course but no longer has Course Access, usually after an Approved Refund Request.
 

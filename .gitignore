@@ -33,3 +33,6 @@ reports/
 
 # Emails written locally instead of sent
 .outbox/
+
+# Notifications kept locally when Knock is not configured
+.notifications/
