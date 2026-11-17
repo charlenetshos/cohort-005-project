@@ -4,6 +4,9 @@ import { Sidebar } from "~/components/sidebar";
 import { DevUI } from "~/components/dev-ui";
 import { Toaster } from "sonner";
 import { getCurrentUserId, getDevCountry } from "~/lib/session";
+import { getFeedConfig } from "~/lib/notifications/feed-config.server";
+import { NotificationFeedProvider } from "~/components/notification-feed/use-notification-feed";
+import { NotificationBell } from "~/components/notification-feed/notification-feed";
 import { getCountryTierInfo, COUNTRIES } from "~/lib/ppp";
 import { eq, and, or, sql, desc, isNotNull, notExists } from "drizzle-orm";
 import { db } from "~/db";
@@ -231,6 +234,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     countryTierInfo,
     countries: COUNTRIES,
     isTeamAdmin: currentUserId ? isTeamAdmin(currentUserId) : false,
+    // Nothing for a logged-out visitor: no bell.
+    notificationFeed: currentUser ? getFeedConfig(currentUser.id) : null,
   };
 }
 
@@ -243,15 +248,28 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
     countryTierInfo,
     countries,
     isTeamAdmin: userIsTeamAdmin,
+    notificationFeed,
   } = loaderData;
+
+  const sidebar = (
+    <Sidebar
+      currentUser={currentUser}
+      recentCourses={recentCourses}
+      isTeamAdmin={userIsTeamAdmin}
+      headerAction={notificationFeed?.mode === "local" ? <NotificationBell /> : null}
+    />
+  );
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar
-        currentUser={currentUser}
-        recentCourses={recentCourses}
-        isTeamAdmin={userIsTeamAdmin}
-      />
+      {notificationFeed && currentUser ? (
+        // Keyed by user so a DevUI user switch starts that user's Feed afresh.
+        <NotificationFeedProvider key={currentUser.id} config={notificationFeed}>
+          {sidebar}
+        </NotificationFeedProvider>
+      ) : (
+        sidebar
+      )}
       <main className="flex-1 overflow-y-auto">
         <Outlet />
       </main>

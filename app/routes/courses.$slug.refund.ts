@@ -17,6 +17,7 @@ import { checkRefundRequestEligibility } from "~/lib/refunds.server";
 import { parseFormData, parseParams } from "~/lib/validation";
 import { formatPrice } from "~/lib/utils";
 import { sendEmail } from "~/lib/mailer.server";
+import { notifyNewRefundRequest } from "~/lib/notifications/new-refund-request.server";
 
 const REFUND_WINDOW_DAYS = 14;
 const MAX_WATCHED_HOURS = 1;
@@ -178,6 +179,14 @@ export async function action({ params, request }: Route.ActionArgs) {
     })
     .returning()
     .get();
+
+  // Not awaited: a Notification never fails or slows down the Refund Request.
+  // It catches and logs its own errors.
+  void notifyNewRefundRequest({
+    studentId: student.id,
+    courseId: course.id,
+    reason: parsed.data.reason,
+  });
 
   const email = buildRefundRequestEmail({
     studentName: student.name,
