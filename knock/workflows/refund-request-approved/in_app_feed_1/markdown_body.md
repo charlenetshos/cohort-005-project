@@ -1,0 +1,1 @@
+Your Refund Request for **{{ data.courseTitle }}** was approved: ${{ data.amount | divided_by: 100.0 | round: 2 }} is on its way back to you.{% if data.isTeamLicence %} Its Seat Codes no longer work.{% endif %}
