@@ -18,6 +18,28 @@ Form data, search parameters and request bodies get a zod schema before the
 values reach any query. Do not read `formData.get("x") as string`. The cast
 is a lie the type checker believes.
 
+## Services take the database last, with a default
+
+A function in `app/lib/*.server.ts` types its database from `~/db` and takes it
+as the last parameter, defaulting to the real one. Tests pass an in-memory
+database; routes leave it out.
+
+```ts
+import { db as defaultDb } from "~/db";
+
+type Database = typeof defaultDb;
+
+export function findActiveEnrollment(
+  userId: number,
+  courseId: number,
+  database: Database = defaultDb
+) {
+```
+
+`enrollments.server.ts` and `seats.server.ts` follow this. A service that puts
+the database first, or builds its own type from `drizzle-orm/better-sqlite3`,
+reads differently from every other service.
+
 ## Do not write `any`, and do not write `!`
 
 Both switch the type checker off at the exact point you are least sure. If a
