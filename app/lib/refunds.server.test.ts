@@ -11,6 +11,8 @@ import {
 import { grantCourseAccess, hasCourseAccess } from "./enrollments.server";
 import { claimSeat } from "./seats.server";
 import { SEAT_ON_HOLD_MESSAGE } from "./seats";
+import { isBookmarked, toggleBookmark } from "./bookmarks.server";
+import { getNote, saveNote } from "./notes.server";
 
 type TestDb = ReturnType<typeof createTestDb>;
 // The services are typed against the app's db; the test db has the same shape.
@@ -105,6 +107,21 @@ describe("approving a Refund Request", () => {
     expect(hasCourseAccess(base.user.id, base.course.id, asDb(testDb))).toBe(false);
     expect(testDb.select().from(schema.lessonProgress).all()).toHaveLength(1);
     expect(testDb.select().from(schema.enrollments).all()).toHaveLength(1);
+  });
+
+  it("keeps the buyer's Bookmarks and Notes", () => {
+    const purchase = insertPurchase(base.user.id);
+    grantCourseAccess(base.user.id, base.course.id, asDb(testDb));
+    const now = new Date("2026-11-06T09:00:00.000Z");
+    toggleBookmark(asDb(testDb), base.user.id, lessonIds[0], now);
+    saveNote(asDb(testDb), base.user.id, lessonIds[1], "come back to this", now);
+    const request = insertRefundRequest(purchase.id);
+
+    approveRefundRequest(request.id, admin.id, now, asDb(testDb));
+
+    expect(hasCourseAccess(base.user.id, base.course.id, asDb(testDb))).toBe(false);
+    expect(isBookmarked(asDb(testDb), base.user.id, lessonIds[0])).toBe(true);
+    expect(getNote(asDb(testDb), base.user.id, lessonIds[1])?.body).toBe("come back to this");
   });
 
   it("lets a refunded student buy again and pick up the same enrollment", () => {

@@ -1996,6 +1996,49 @@ This course is still in draft while the cluster examples are rewritten against t
     `Created ${countRows(schema.comments)} lesson comments across ${countRows(schema.comments, isNull(schema.comments.parentId))} threads.`
   );
 
+  // ─── Bookmarks and Notes ───
+  // Private to the Student who made them, on Lessons of Courses they are
+  // enrolled in.
+
+  db.insert(schema.bookmarks)
+    .values([
+      { userId: students[0].id, lessonId: course1LessonIds[3], createdAt: daysAgo(20) },
+      { userId: students[0].id, lessonId: course1LessonIds[12], createdAt: daysAgo(6) },
+      { userId: students[0].id, lessonId: course2LessonIds[2], createdAt: daysAgo(2) },
+      { userId: students[2].id, lessonId: course1LessonIds[1], createdAt: daysAgo(4) },
+    ])
+    .run();
+
+  db.insert(schema.notes)
+    .values([
+      {
+        userId: students[0].id,
+        lessonId: course1LessonIds[3],
+        body: "Rewatch the middle section.\nTry the exercise again without the hints.",
+        createdAt: daysAgo(20),
+        updatedAt: daysAgo(5),
+      },
+      {
+        userId: students[0].id,
+        lessonId: course2LessonIds[2],
+        body: "# isn't a heading here, and *this* isn't bold. Plain text only.",
+        createdAt: daysAgo(2),
+        updatedAt: daysAgo(2),
+      },
+      {
+        userId: students[2].id,
+        lessonId: course1LessonIds[1],
+        body: "Ask about this in the discussion once I've finished the module.",
+        createdAt: daysAgo(4),
+        updatedAt: daysAgo(3),
+      },
+    ])
+    .run();
+
+  console.log(
+    `Created ${countRows(schema.bookmarks)} bookmarks and ${countRows(schema.notes)} notes.`
+  );
+
   // ─── Lesson Progress ───
 
   // Helper to mark lessons as complete
