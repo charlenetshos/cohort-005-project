@@ -113,15 +113,15 @@ describe("approving a Refund Request", () => {
     const purchase = insertPurchase(base.user.id);
     grantCourseAccess(base.user.id, base.course.id, asDb(testDb));
     const now = new Date("2026-11-06T09:00:00.000Z");
-    toggleBookmark(asDb(testDb), base.user.id, lessonIds[0], now);
-    saveNote(asDb(testDb), base.user.id, lessonIds[1], "come back to this", now);
+    toggleBookmark(base.user.id, lessonIds[0], now, asDb(testDb));
+    saveNote(base.user.id, lessonIds[1], "come back to this", now, asDb(testDb));
     const request = insertRefundRequest(purchase.id);
 
     approveRefundRequest(request.id, admin.id, now, asDb(testDb));
 
     expect(hasCourseAccess(base.user.id, base.course.id, asDb(testDb))).toBe(false);
-    expect(isBookmarked(asDb(testDb), base.user.id, lessonIds[0])).toBe(true);
-    expect(getNote(asDb(testDb), base.user.id, lessonIds[1])?.body).toBe("come back to this");
+    expect(isBookmarked(base.user.id, lessonIds[0], asDb(testDb))).toBe(true);
+    expect(getNote(base.user.id, lessonIds[1], asDb(testDb))?.body).toBe("come back to this");
   });
 
   it("lets a refunded student buy again and pick up the same enrollment", () => {

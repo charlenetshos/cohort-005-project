@@ -1,6 +1,5 @@
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { and, desc, eq } from "drizzle-orm";
-import * as schema from "~/db/schema";
+import { db as defaultDb } from "~/db";
 import { courses, lessons, modules, notes } from "~/db/schema";
 import { noteBodySchema } from "~/lib/notes";
 
@@ -12,13 +11,16 @@ import { noteBodySchema } from "~/lib/notes";
 // Only the owning Student's Lesson page and Saved page may read Note bodies.
 // No Instructor or Platform Admin view calls into this module.
 //
-// Every function takes the database first, so tests can hand in an in-memory
-// one. Callers check content access before calling.
+// Callers check content access before calling.
 
-export type Db = BetterSQLite3Database<typeof schema>;
+type Database = typeof defaultDb;
 
-export function getNote(db: Db, userId: number, lessonId: number) {
-  return db
+export function getNote(
+  userId: number,
+  lessonId: number,
+  database: Database = defaultDb
+) {
+  return database
     .select({ body: notes.body, updatedAt: notes.updatedAt })
     .from(notes)
     .where(and(eq(notes.userId, userId), eq(notes.lessonId, lessonId)))
@@ -35,11 +37,11 @@ export type SaveNoteResult =
  * again. A body over the cap is refused.
  */
 export function saveNote(
-  db: Db,
   userId: number,
   lessonId: number,
   body: string,
-  now: Date
+  now: Date,
+  database: Database = defaultDb
 ): SaveNoteResult {
   const parsed = noteBodySchema.safeParse(body);
   if (!parsed.success) {
@@ -47,16 +49,23 @@ export function saveNote(
   }
 
   if (parsed.data.length === 0) {
-    db.delete(notes)
+    database
+      .delete(notes)
       .where(and(eq(notes.userId, userId), eq(notes.lessonId, lessonId)))
       .run();
     return { ok: true, note: null };
   }
 
   const at = now.toISOString();
-  const saved = db
+  const saved = database
     .insert(notes)
-    .values({ userId, lessonId, body: parsed.data, createdAt: at, updatedAt: at })
+    .values({
+      userId,
+      lessonId,
+      body: parsed.data,
+      createdAt: at,
+      updatedAt: at,
+    })
     .onConflictDoUpdate({
       target: [notes.userId, notes.lessonId],
       set: { body: parsed.data, updatedAt: at },
@@ -67,8 +76,8 @@ export function saveNote(
 }
 
 /** The Student's Notes, most recently edited first, each with the Lesson and Course it belongs to. */
-export function listNotes(db: Db, userId: number) {
-  return db
+export function listNotes(userId: number, database: Database = defaultDb) {
+  return database
     .select({
       id: notes.id,
       body: notes.body,

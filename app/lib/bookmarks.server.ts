@@ -1,19 +1,21 @@
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { and, desc, eq } from "drizzle-orm";
-import * as schema from "~/db/schema";
+import { db as defaultDb } from "~/db";
 import { bookmarks, courses, lessons, modules } from "~/db/schema";
 
 // ─── Bookmarks ───
 // A Student's flag on a Lesson. One per Student per Lesson, held by the
 // unique index on (user_id, lesson_id). See GLOSSARY.md.
 //
-// Every function takes the database first, so tests can hand in an in-memory
-// one. Callers check content access before calling.
+// Callers check content access before calling.
 
-export type Db = BetterSQLite3Database<typeof schema>;
+type Database = typeof defaultDb;
 
-export function isBookmarked(db: Db, userId: number, lessonId: number) {
-  return !!db
+export function isBookmarked(
+  userId: number,
+  lessonId: number,
+  database: Database = defaultDb
+) {
+  return !!database
     .select({ id: bookmarks.id })
     .from(bookmarks)
     .where(and(eq(bookmarks.userId, userId), eq(bookmarks.lessonId, lessonId)))
@@ -22,19 +24,20 @@ export function isBookmarked(db: Db, userId: number, lessonId: number) {
 
 /** Adds the Bookmark if there is none, removes it if there is one. Returns whether the Lesson is now bookmarked. */
 export function toggleBookmark(
-  db: Db,
   userId: number,
   lessonId: number,
-  now: Date
+  now: Date,
+  database: Database = defaultDb
 ): boolean {
-  const removed = db
+  const removed = database
     .delete(bookmarks)
     .where(and(eq(bookmarks.userId, userId), eq(bookmarks.lessonId, lessonId)))
     .returning({ id: bookmarks.id })
     .all();
   if (removed.length > 0) return false;
 
-  db.insert(bookmarks)
+  database
+    .insert(bookmarks)
     .values({ userId, lessonId, createdAt: now.toISOString() })
     .onConflictDoNothing()
     .run();
@@ -42,8 +45,8 @@ export function toggleBookmark(
 }
 
 /** The Student's Bookmarks, newest first, each with the Lesson and Course it belongs to. */
-export function listBookmarks(db: Db, userId: number) {
-  return db
+export function listBookmarks(userId: number, database: Database = defaultDb) {
+  return database
     .select({
       id: bookmarks.id,
       createdAt: bookmarks.createdAt,

@@ -7,6 +7,9 @@ import { getNote, listNotes, saveNote } from "./notes.server";
 import { MAX_NOTE_LENGTH } from "./notes";
 
 type TestDb = ReturnType<typeof createTestDb>;
+// The services are typed against the app's db; the test db has the same shape.
+type AppDb = NonNullable<Parameters<typeof listNotes>[1]>;
+const asDb = (testDb: TestDb) => testDb as unknown as AppDb;
 
 const NOW = new Date(2026, 9, 6, 12, 0, 0);
 const LATER = new Date(2026, 9, 7, 9, 30, 0);
@@ -50,31 +53,31 @@ function addStudent(name: string) {
 
 describe("bookmarking a Lesson", () => {
   it("adds a Bookmark, then removes it on the second toggle", () => {
-    expect(toggleBookmark(db, base.user.id, lessonIds[0], NOW)).toBe(true);
-    expect(isBookmarked(db, base.user.id, lessonIds[0])).toBe(true);
+    expect(toggleBookmark(base.user.id, lessonIds[0], NOW, asDb(db))).toBe(true);
+    expect(isBookmarked(base.user.id, lessonIds[0], asDb(db))).toBe(true);
 
-    expect(toggleBookmark(db, base.user.id, lessonIds[0], LATER)).toBe(false);
-    expect(isBookmarked(db, base.user.id, lessonIds[0])).toBe(false);
+    expect(toggleBookmark(base.user.id, lessonIds[0], LATER, asDb(db))).toBe(false);
+    expect(isBookmarked(base.user.id, lessonIds[0], asDb(db))).toBe(false);
   });
 
   it("never leaves a Student with two Bookmarks on one Lesson", () => {
-    toggleBookmark(db, base.user.id, lessonIds[0], NOW);
+    toggleBookmark(base.user.id, lessonIds[0], NOW, asDb(db));
     expect(() =>
       db
         .insert(schema.bookmarks)
         .values({ userId: base.user.id, lessonId: lessonIds[0] })
         .run()
     ).toThrow();
-    expect(listBookmarks(db, base.user.id)).toHaveLength(1);
+    expect(listBookmarks(base.user.id, asDb(db))).toHaveLength(1);
   });
 
   it("lists only the Student's own Bookmarks, newest first, with Lesson and Course", () => {
     const other = addStudent("Ben");
-    toggleBookmark(db, base.user.id, lessonIds[0], NOW);
-    toggleBookmark(db, base.user.id, lessonIds[2], LATER);
-    toggleBookmark(db, other.id, lessonIds[1], LATEST);
+    toggleBookmark(base.user.id, lessonIds[0], NOW, asDb(db));
+    toggleBookmark(base.user.id, lessonIds[2], LATER, asDb(db));
+    toggleBookmark(other.id, lessonIds[1], LATEST, asDb(db));
 
-    expect(listBookmarks(db, base.user.id)).toMatchObject([
+    expect(listBookmarks(base.user.id, asDb(db))).toMatchObject([
       {
         lessonId: lessonIds[2],
         lessonTitle: "Lesson 3",
@@ -88,71 +91,71 @@ describe("bookmarking a Lesson", () => {
 
 describe("saving a Note", () => {
   it("creates a Note the first time, trimmed", () => {
-    const result = saveNote(db, base.user.id, lessonIds[0], "  first thoughts  ", NOW);
+    const result = saveNote(base.user.id, lessonIds[0], "  first thoughts  ", NOW, asDb(db));
 
     expect(result).toEqual({
       ok: true,
       note: { body: "first thoughts", updatedAt: NOW.toISOString() },
     });
-    expect(getNote(db, base.user.id, lessonIds[0])).toEqual({
+    expect(getNote(base.user.id, lessonIds[0], asDb(db))).toEqual({
       body: "first thoughts",
       updatedAt: NOW.toISOString(),
     });
   });
 
   it("replaces the body and moves the last-edited time on when saved again", () => {
-    saveNote(db, base.user.id, lessonIds[0], "first", NOW);
-    saveNote(db, base.user.id, lessonIds[0], "second", LATER);
+    saveNote(base.user.id, lessonIds[0], "first", NOW, asDb(db));
+    saveNote(base.user.id, lessonIds[0], "second", LATER, asDb(db));
 
-    expect(getNote(db, base.user.id, lessonIds[0])).toEqual({
+    expect(getNote(base.user.id, lessonIds[0], asDb(db))).toEqual({
       body: "second",
       updatedAt: LATER.toISOString(),
     });
-    expect(listNotes(db, base.user.id)).toHaveLength(1);
+    expect(listNotes(base.user.id, asDb(db))).toHaveLength(1);
   });
 
   it("keeps the text exactly as typed, Markdown characters included", () => {
-    saveNote(db, base.user.id, lessonIds[0], "# not a heading\n*not bold*", NOW);
+    saveNote(base.user.id, lessonIds[0], "# not a heading\n*not bold*", NOW, asDb(db));
 
-    expect(getNote(db, base.user.id, lessonIds[0])?.body).toBe(
+    expect(getNote(base.user.id, lessonIds[0], asDb(db))?.body).toBe(
       "# not a heading\n*not bold*"
     );
   });
 
   it("accepts a Note of exactly the cap and refuses one character more", () => {
     expect(
-      saveNote(db, base.user.id, lessonIds[0], "a".repeat(MAX_NOTE_LENGTH), NOW)
+      saveNote(base.user.id, lessonIds[0], "a".repeat(MAX_NOTE_LENGTH), NOW, asDb(db))
     ).toMatchObject({ ok: true });
 
     const refused = saveNote(
-      db,
       base.user.id,
       lessonIds[1],
       "a".repeat(MAX_NOTE_LENGTH + 1),
-      NOW
+      NOW,
+      asDb(db)
     );
     expect(refused).toEqual({
       ok: false,
       error: "A note must be 2,000 characters or fewer.",
     });
-    expect(getNote(db, base.user.id, lessonIds[1])).toBeUndefined();
+    expect(getNote(base.user.id, lessonIds[1], asDb(db))).toBeUndefined();
   });
 
   it("removes the Note when saved empty", () => {
-    saveNote(db, base.user.id, lessonIds[0], "something", NOW);
-    saveNote(db, base.user.id, lessonIds[0], "   ", LATER);
+    saveNote(base.user.id, lessonIds[0], "something", NOW, asDb(db));
+    saveNote(base.user.id, lessonIds[0], "   ", LATER, asDb(db));
 
-    expect(getNote(db, base.user.id, lessonIds[0])).toBeUndefined();
+    expect(getNote(base.user.id, lessonIds[0], asDb(db))).toBeUndefined();
   });
 
   it("lists only the Student's own Notes, last edited first, with Lesson and Course", () => {
     const other = addStudent("Ben");
-    saveNote(db, base.user.id, lessonIds[0], "old", NOW);
-    saveNote(db, base.user.id, lessonIds[1], "newer", LATER);
-    saveNote(db, other.id, lessonIds[2], "not mine", LATEST);
-    saveNote(db, base.user.id, lessonIds[0], "edited last", LATEST);
+    saveNote(base.user.id, lessonIds[0], "old", NOW, asDb(db));
+    saveNote(base.user.id, lessonIds[1], "newer", LATER, asDb(db));
+    saveNote(other.id, lessonIds[2], "not mine", LATEST, asDb(db));
+    saveNote(base.user.id, lessonIds[0], "edited last", LATEST, asDb(db));
 
-    expect(listNotes(db, base.user.id)).toMatchObject([
+    expect(listNotes(base.user.id, asDb(db))).toMatchObject([
       {
         lessonId: lessonIds[0],
         body: "edited last",

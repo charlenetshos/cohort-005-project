@@ -789,8 +789,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // The Student's own Bookmark and Note on this Lesson. Both follow the same
   // content-access bar as the discussion; a signed-out visitor gets neither.
   const savedFor = canViewContent && currentUserId ? currentUserId : null;
-  const bookmarked = savedFor ? isBookmarked(db, savedFor, lessonId) : false;
-  const note = savedFor ? (getNote(db, savedFor, lessonId) ?? null) : null;
+  const bookmarked = savedFor ? isBookmarked(savedFor, lessonId) : false;
+  const note = savedFor ? (getNote(savedFor, lessonId) ?? null) : null;
 
   // Render lesson content from Markdown to HTML server-side
   const contentHtml = lesson.content
@@ -986,7 +986,7 @@ export async function action({ params, request }: Route.ActionArgs) {
     }
 
     if (intent === "toggle-bookmark") {
-      const bookmarked = toggleBookmark(db, currentUserId, lessonId, new Date());
+      const bookmarked = toggleBookmark(currentUserId, lessonId, new Date());
       return { ok: true, bookmarked };
     }
 
@@ -999,7 +999,7 @@ export async function action({ params, request }: Route.ActionArgs) {
         error: parsed.errors.body ?? "Could not save that note.",
       };
     }
-    return saveNote(db, currentUserId, lessonId, parsed.data.body, new Date());
+    return saveNote(currentUserId, lessonId, parsed.data.body, new Date());
   }
 
   if (intent === "mark-complete") {
