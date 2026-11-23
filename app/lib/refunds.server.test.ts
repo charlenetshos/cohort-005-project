@@ -24,7 +24,10 @@ let base: ReturnType<typeof seedBaseData>;
 let admin: typeof schema.users.$inferSelect;
 let lessonIds: number[];
 
-function insertPurchase(userId: number, createdAt = "2026-11-01T10:00:00.000Z") {
+function insertPurchase(
+  userId: number,
+  createdAt = "2026-11-01T10:00:00.000Z"
+) {
   return testDb
     .insert(schema.purchases)
     .values({ userId, courseId: base.course.id, amountPaid: 7900, createdAt })
@@ -44,7 +47,11 @@ function insertRefundRequest(
 }
 
 function getRefund(id: number) {
-  return testDb.select().from(schema.refunds).where(eq(schema.refunds.id, id)).get()!;
+  return testDb
+    .select()
+    .from(schema.refunds)
+    .where(eq(schema.refunds.id, id))
+    .get()!;
 }
 
 beforeEach(() => {
@@ -52,7 +59,11 @@ beforeEach(() => {
   base = seedBaseData(testDb);
   admin = testDb
     .insert(schema.users)
-    .values({ name: "Ada Admin", email: "ada@example.com", role: schema.UserRole.Admin })
+    .values({
+      name: "Ada Admin",
+      email: "ada@example.com",
+      role: schema.UserRole.Admin,
+    })
     .returning()
     .get();
 
@@ -79,7 +90,12 @@ describe("approving a Refund Request", () => {
     const request = insertRefundRequest(purchase.id);
     const now = new Date("2026-11-06T09:00:00.000Z");
 
-    const result = approveRefundRequest(request.id, admin.id, now, asDb(testDb));
+    const result = approveRefundRequest(
+      request.id,
+      admin.id,
+      now,
+      asDb(testDb)
+    );
 
     expect(result.ok).toBe(true);
     const refund = getRefund(request.id);
@@ -104,7 +120,9 @@ describe("approving a Refund Request", () => {
 
     approveRefundRequest(request.id, admin.id, new Date(), asDb(testDb));
 
-    expect(hasCourseAccess(base.user.id, base.course.id, asDb(testDb))).toBe(false);
+    expect(hasCourseAccess(base.user.id, base.course.id, asDb(testDb))).toBe(
+      false
+    );
     expect(testDb.select().from(schema.lessonProgress).all()).toHaveLength(1);
     expect(testDb.select().from(schema.enrollments).all()).toHaveLength(1);
   });
@@ -114,27 +132,47 @@ describe("approving a Refund Request", () => {
     grantCourseAccess(base.user.id, base.course.id, asDb(testDb));
     const now = new Date("2026-11-06T09:00:00.000Z");
     toggleBookmark(base.user.id, lessonIds[0], now, asDb(testDb));
-    saveNote(base.user.id, lessonIds[1], "come back to this", now, asDb(testDb));
+    saveNote(
+      base.user.id,
+      lessonIds[1],
+      "come back to this",
+      now,
+      asDb(testDb)
+    );
     const request = insertRefundRequest(purchase.id);
 
     approveRefundRequest(request.id, admin.id, now, asDb(testDb));
 
-    expect(hasCourseAccess(base.user.id, base.course.id, asDb(testDb))).toBe(false);
+    expect(hasCourseAccess(base.user.id, base.course.id, asDb(testDb))).toBe(
+      false
+    );
     expect(isBookmarked(base.user.id, lessonIds[0], asDb(testDb))).toBe(true);
-    expect(getNote(base.user.id, lessonIds[1], asDb(testDb))?.body).toBe("come back to this");
+    expect(getNote(base.user.id, lessonIds[1], asDb(testDb))?.body).toBe(
+      "come back to this"
+    );
   });
 
   it("lets a refunded student buy again and pick up the same enrollment", () => {
     const purchase = insertPurchase(base.user.id);
-    const original = grantCourseAccess(base.user.id, base.course.id, asDb(testDb));
+    const original = grantCourseAccess(
+      base.user.id,
+      base.course.id,
+      asDb(testDb)
+    );
     const request = insertRefundRequest(purchase.id);
     approveRefundRequest(request.id, admin.id, new Date(), asDb(testDb));
 
-    const reinstated = grantCourseAccess(base.user.id, base.course.id, asDb(testDb));
+    const reinstated = grantCourseAccess(
+      base.user.id,
+      base.course.id,
+      asDb(testDb)
+    );
 
     expect(reinstated.id).toBe(original.id);
     expect(reinstated.enrolledAt).toBe(original.enrolledAt);
-    expect(hasCourseAccess(base.user.id, base.course.id, asDb(testDb))).toBe(true);
+    expect(hasCourseAccess(base.user.id, base.course.id, asDb(testDb))).toBe(
+      true
+    );
   });
 
   it("voids unclaimed seat codes on a team purchase and leaves claimed ones", () => {
@@ -143,7 +181,12 @@ describe("approving a Refund Request", () => {
     testDb
       .insert(schema.coupons)
       .values([
-        { teamId: team.id, courseId: base.course.id, purchaseId: purchase.id, code: "unclaimed" },
+        {
+          teamId: team.id,
+          courseId: base.course.id,
+          purchaseId: purchase.id,
+          code: "unclaimed",
+        },
         {
           teamId: team.id,
           courseId: base.course.id,
@@ -166,16 +209,29 @@ describe("approving a Refund Request", () => {
   it("refuses to decide a request a second time", () => {
     const purchase = insertPurchase(base.user.id);
     const request = insertRefundRequest(purchase.id);
-    declineRefundRequest(request.id, admin.id, "Outside our policy.", new Date(), asDb(testDb));
+    declineRefundRequest(
+      request.id,
+      admin.id,
+      "Outside our policy.",
+      new Date(),
+      asDb(testDb)
+    );
 
-    const result = approveRefundRequest(request.id, admin.id, new Date(), asDb(testDb));
+    const result = approveRefundRequest(
+      request.id,
+      admin.id,
+      new Date(),
+      asDb(testDb)
+    );
 
     expect(result).toEqual({ ok: false, error: "already-decided" });
     expect(getRefund(request.id).status).toBe(schema.RefundStatus.Declined);
   });
 
   it("reports a request that doesn't exist", () => {
-    expect(approveRefundRequest(999, admin.id, new Date(), asDb(testDb))).toEqual({
+    expect(
+      approveRefundRequest(999, admin.id, new Date(), asDb(testDb))
+    ).toEqual({
       ok: false,
       error: "not-found",
     });
@@ -201,18 +257,26 @@ describe("declining a Refund Request", () => {
     expect(refund.status).toBe(schema.RefundStatus.Declined);
     expect(refund.declineNote).toBe("You've finished most of the course.");
     expect(refund.amountRefunded).toBeNull();
-    expect(hasCourseAccess(base.user.id, base.course.id, asDb(testDb))).toBe(true);
+    expect(hasCourseAccess(base.user.id, base.course.id, asDb(testDb))).toBe(
+      true
+    );
   });
 });
 
 describe("the Open Refund Request queue", () => {
   it("lists only Open requests, oldest first", () => {
-    const first = insertRefundRequest(insertPurchase(base.user.id).id, "2026-11-03T10:00:00.000Z");
+    const first = insertRefundRequest(
+      insertPurchase(base.user.id).id,
+      "2026-11-03T10:00:00.000Z"
+    );
     const second = insertRefundRequest(
       insertPurchase(base.instructor.id).id,
       "2026-11-04T10:00:00.000Z"
     );
-    const decided = insertRefundRequest(insertPurchase(admin.id).id, "2026-11-02T10:00:00.000Z");
+    const decided = insertRefundRequest(
+      insertPurchase(admin.id).id,
+      "2026-11-02T10:00:00.000Z"
+    );
     declineRefundRequest(decided.id, admin.id, "No.", new Date(), asDb(testDb));
 
     const queue = listOpenRefundRequests(new Date(), asDb(testDb));
@@ -236,13 +300,31 @@ describe("the Open Refund Request queue", () => {
     testDb
       .insert(schema.videoWatchEvents)
       .values([
-        { userId: base.user.id, lessonId: lessonIds[0], eventType: "pause", positionSeconds: 3600 },
-        { userId: base.user.id, lessonId: lessonIds[0], eventType: "pause", positionSeconds: 4000 },
-        { userId: base.user.id, lessonId: lessonIds[1], eventType: "pause", positionSeconds: 3600 },
+        {
+          userId: base.user.id,
+          lessonId: lessonIds[0],
+          eventType: "pause",
+          positionSeconds: 3600,
+        },
+        {
+          userId: base.user.id,
+          lessonId: lessonIds[0],
+          eventType: "pause",
+          positionSeconds: 4000,
+        },
+        {
+          userId: base.user.id,
+          lessonId: lessonIds[1],
+          eventType: "pause",
+          positionSeconds: 3600,
+        },
       ])
       .run();
 
-    const [row] = listOpenRefundRequests(new Date(2026, 10, 10, 12), asDb(testDb));
+    const [row] = listOpenRefundRequests(
+      new Date(2026, 10, 10, 12),
+      asDb(testDb)
+    );
 
     expect(row.progress.lessonsCompleted).toBe(2);
     expect(row.progress.lessonCount).toBe(4);
@@ -260,12 +342,20 @@ describe("a Team Licence's Refund Request", () => {
   beforeEach(() => {
     ana = testDb
       .insert(schema.users)
-      .values({ name: "Ana Buyer", email: "ana@example.com", role: schema.UserRole.Student })
+      .values({
+        name: "Ana Buyer",
+        email: "ana@example.com",
+        role: schema.UserRole.Student,
+      })
       .returning()
       .get();
     ben = testDb
       .insert(schema.users)
-      .values({ name: "Ben Member", email: "ben@example.com", role: schema.UserRole.Student })
+      .values({
+        name: "Ben Member",
+        email: "ben@example.com",
+        role: schema.UserRole.Student,
+      })
       .returning()
       .get();
 
@@ -274,7 +364,11 @@ describe("a Team Licence's Refund Request", () => {
     const team = testDb.insert(schema.teams).values({}).returning().get();
     testDb
       .insert(schema.teamMembers)
-      .values({ teamId: team.id, userId: ana.id, role: schema.TeamMemberRole.Admin })
+      .values({
+        teamId: team.id,
+        userId: ana.id,
+        role: schema.TeamMemberRole.Admin,
+      })
       .run();
     seatCodes = [1, 2, 3, 4, 5].map((n) => `team-seat-${n}`);
     testDb
@@ -299,10 +393,17 @@ describe("a Team Licence's Refund Request", () => {
   }
 
   it("cancels all Seat Codes and refunds the full amount when approved with no Seats claimed", () => {
-    expect(checkRefundRequestEligibility(ana.id, base.course.id, asDb(testDb)).ok).toBe(true);
+    expect(
+      checkRefundRequestEligibility(ana.id, base.course.id, asDb(testDb)).ok
+    ).toBe(true);
     const request = insertRefundRequest(licence.id);
 
-    const result = approveRefundRequest(request.id, admin.id, new Date(), asDb(testDb));
+    const result = approveRefundRequest(
+      request.id,
+      admin.id,
+      new Date(),
+      asDb(testDb)
+    );
 
     expect(result).toMatchObject({ ok: true, amount: 7900 });
     expect(getRefund(request.id).amountRefunded).toBe(7900);
@@ -322,7 +423,13 @@ describe("a Team Licence's Refund Request", () => {
     expect(getSeatCode(seatCodes[0]).redeemedByUserId).toBeNull();
     expect(hasCourseAccess(ben.id, base.course.id, asDb(testDb))).toBe(false);
 
-    declineRefundRequest(first.id, admin.id, "Your team is still using it.", new Date(), asDb(testDb));
+    declineRefundRequest(
+      first.id,
+      admin.id,
+      "Your team is still using it.",
+      new Date(),
+      asDb(testDb)
+    );
     const second = insertRefundRequest(licence.id);
     approveRefundRequest(second.id, admin.id, new Date(), asDb(testDb));
 
@@ -334,7 +441,13 @@ describe("a Team Licence's Refund Request", () => {
 
   it("lets a Seat Code be claimed again after the request is declined", () => {
     const request = insertRefundRequest(licence.id);
-    declineRefundRequest(request.id, admin.id, "Your team is still using it.", new Date(), asDb(testDb));
+    declineRefundRequest(
+      request.id,
+      admin.id,
+      "Your team is still using it.",
+      new Date(),
+      asDb(testDb)
+    );
 
     const result = claimSeat(seatCodes[0], ben.id, "", asDb(testDb));
 
@@ -346,7 +459,9 @@ describe("a Team Licence's Refund Request", () => {
   it("can't be raised once a team member has claimed a Seat", () => {
     expect(claimSeat(seatCodes[0], ben.id, "", asDb(testDb)).ok).toBe(true);
 
-    expect(checkRefundRequestEligibility(ana.id, base.course.id, asDb(testDb))).toEqual({
+    expect(
+      checkRefundRequestEligibility(ana.id, base.course.id, asDb(testDb))
+    ).toEqual({
       ok: false,
       status: 403,
       message: "A claimed team seat cannot be refunded.",
@@ -356,7 +471,9 @@ describe("a Team Licence's Refund Request", () => {
   it("can't be raised once the buyer has claimed a Seat themself", () => {
     expect(claimSeat(seatCodes[0], ana.id, "", asDb(testDb)).ok).toBe(true);
 
-    expect(checkRefundRequestEligibility(ana.id, base.course.id, asDb(testDb))).toEqual({
+    expect(
+      checkRefundRequestEligibility(ana.id, base.course.id, asDb(testDb))
+    ).toEqual({
       ok: false,
       status: 403,
       message: "A claimed team seat cannot be refunded.",
@@ -366,7 +483,9 @@ describe("a Team Licence's Refund Request", () => {
   it("can't be raised by a student holding a claimed Seat, because they have no purchase", () => {
     expect(claimSeat(seatCodes[0], ben.id, "", asDb(testDb)).ok).toBe(true);
 
-    expect(checkRefundRequestEligibility(ben.id, base.course.id, asDb(testDb))).toEqual({
+    expect(
+      checkRefundRequestEligibility(ben.id, base.course.id, asDb(testDb))
+    ).toEqual({
       ok: false,
       status: 403,
       message: "You have not bought this course.",
@@ -389,10 +508,18 @@ describe("a Team Licence's Refund Request", () => {
       .run();
     testDb
       .insert(schema.videoWatchEvents)
-      .values({ userId: ana.id, lessonId: lessonIds[0], eventType: "pause", positionSeconds: 9000 })
+      .values({
+        userId: ana.id,
+        lessonId: lessonIds[0],
+        eventType: "pause",
+        positionSeconds: 9000,
+      })
       .run();
 
-    const [row] = listOpenRefundRequests(new Date(2026, 10, 22, 12), asDb(testDb));
+    const [row] = listOpenRefundRequests(
+      new Date(2026, 10, 22, 12),
+      asDb(testDb)
+    );
 
     expect(row.isTeamPurchase).toBe(true);
     expect(row.seatCount).toBe(5);
@@ -408,7 +535,10 @@ describe("a Team Licence's Refund Request", () => {
       .where(eq(schema.coupons.code, seatCodes[0]))
       .run();
 
-    const [row] = listOpenRefundRequests(new Date(2026, 10, 6, 12), asDb(testDb));
+    const [row] = listOpenRefundRequests(
+      new Date(2026, 10, 6, 12),
+      asDb(testDb)
+    );
 
     expect(row.seatCount).toBe(5);
     expect(row.claimedSeatCount).toBe(1);

@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { createTestDb, seedBaseData } from "~/test/setup";
 import * as schema from "~/db/schema";
 import { UserRole } from "~/db/schema";
-import { isBookmarked, listBookmarks, toggleBookmark } from "./bookmarks.server";
+import {
+  isBookmarked,
+  listBookmarks,
+  toggleBookmark,
+} from "./bookmarks.server";
 import { getNote, listNotes, saveNote } from "./notes.server";
 import { MAX_NOTE_LENGTH } from "./notes";
 
@@ -53,10 +57,14 @@ function addStudent(name: string) {
 
 describe("bookmarking a Lesson", () => {
   it("adds a Bookmark, then removes it on the second toggle", () => {
-    expect(toggleBookmark(base.user.id, lessonIds[0], NOW, asDb(db))).toBe(true);
+    expect(toggleBookmark(base.user.id, lessonIds[0], NOW, asDb(db))).toBe(
+      true
+    );
     expect(isBookmarked(base.user.id, lessonIds[0], asDb(db))).toBe(true);
 
-    expect(toggleBookmark(base.user.id, lessonIds[0], LATER, asDb(db))).toBe(false);
+    expect(toggleBookmark(base.user.id, lessonIds[0], LATER, asDb(db))).toBe(
+      false
+    );
     expect(isBookmarked(base.user.id, lessonIds[0], asDb(db))).toBe(false);
   });
 
@@ -91,7 +99,13 @@ describe("bookmarking a Lesson", () => {
 
 describe("saving a Note", () => {
   it("creates a Note the first time, trimmed", () => {
-    const result = saveNote(base.user.id, lessonIds[0], "  first thoughts  ", NOW, asDb(db));
+    const result = saveNote(
+      base.user.id,
+      lessonIds[0],
+      "  first thoughts  ",
+      NOW,
+      asDb(db)
+    );
 
     expect(result).toEqual({
       ok: true,
@@ -115,7 +129,13 @@ describe("saving a Note", () => {
   });
 
   it("keeps the text exactly as typed, Markdown characters included", () => {
-    saveNote(base.user.id, lessonIds[0], "# not a heading\n*not bold*", NOW, asDb(db));
+    saveNote(
+      base.user.id,
+      lessonIds[0],
+      "# not a heading\n*not bold*",
+      NOW,
+      asDb(db)
+    );
 
     expect(getNote(base.user.id, lessonIds[0], asDb(db))?.body).toBe(
       "# not a heading\n*not bold*"
@@ -124,7 +144,13 @@ describe("saving a Note", () => {
 
   it("accepts a Note of exactly the cap and refuses one character more", () => {
     expect(
-      saveNote(base.user.id, lessonIds[0], "a".repeat(MAX_NOTE_LENGTH), NOW, asDb(db))
+      saveNote(
+        base.user.id,
+        lessonIds[0],
+        "a".repeat(MAX_NOTE_LENGTH),
+        NOW,
+        asDb(db)
+      )
     ).toMatchObject({ ok: true });
 
     const refused = saveNote(

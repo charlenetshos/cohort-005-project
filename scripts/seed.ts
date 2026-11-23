@@ -225,15 +225,40 @@ async function seed() {
   // generated at the bottom of this file. Sign-up dates are spread across the
   // last twelve months, including the last few days.
   const cohortNames = [
-    "Ava Nakamura", "Noah Blackwood", "Isla Fernandes", "Ethan Okafor",
-    "Mia Lindqvist", "Lucas Moreau", "Zara Haddad", "Felix Andersen",
-    "Nina Kowalski", "Omar Rahman", "Chloe Beaumont", "Dmitri Volkov",
-    "Priya Raghavan", "Tomas Silva", "Hana Kim", "Gabriel Rossi",
-    "Amara Diallo", "Jonas Weber", "Lena Petrova", "Kwame Mensah",
-    "Sofia Ricci", "Aarav Shah", "Freya Nilsen", "Diego Castillo",
-    "Yuki Tanaka", "Rosa Delgado", "Idris Bello", "Clara Hoffmann",
-    "Mateo Alvarez", "Elif Demir", "Ruben Ortiz", "Anika Bose",
-    "Caleb Ncube", "Marta Novak",
+    "Ava Nakamura",
+    "Noah Blackwood",
+    "Isla Fernandes",
+    "Ethan Okafor",
+    "Mia Lindqvist",
+    "Lucas Moreau",
+    "Zara Haddad",
+    "Felix Andersen",
+    "Nina Kowalski",
+    "Omar Rahman",
+    "Chloe Beaumont",
+    "Dmitri Volkov",
+    "Priya Raghavan",
+    "Tomas Silva",
+    "Hana Kim",
+    "Gabriel Rossi",
+    "Amara Diallo",
+    "Jonas Weber",
+    "Lena Petrova",
+    "Kwame Mensah",
+    "Sofia Ricci",
+    "Aarav Shah",
+    "Freya Nilsen",
+    "Diego Castillo",
+    "Yuki Tanaka",
+    "Rosa Delgado",
+    "Idris Bello",
+    "Clara Hoffmann",
+    "Mateo Alvarez",
+    "Elif Demir",
+    "Ruben Ortiz",
+    "Anika Bose",
+    "Caleb Ncube",
+    "Marta Novak",
   ];
 
   const cohort = db
@@ -2002,10 +2027,26 @@ This course is still in draft while the cluster examples are rewritten against t
 
   db.insert(schema.bookmarks)
     .values([
-      { userId: students[0].id, lessonId: course1LessonIds[3], createdAt: daysAgo(20) },
-      { userId: students[0].id, lessonId: course1LessonIds[12], createdAt: daysAgo(6) },
-      { userId: students[0].id, lessonId: course2LessonIds[2], createdAt: daysAgo(2) },
-      { userId: students[2].id, lessonId: course1LessonIds[1], createdAt: daysAgo(4) },
+      {
+        userId: students[0].id,
+        lessonId: course1LessonIds[3],
+        createdAt: daysAgo(20),
+      },
+      {
+        userId: students[0].id,
+        lessonId: course1LessonIds[12],
+        createdAt: daysAgo(6),
+      },
+      {
+        userId: students[0].id,
+        lessonId: course2LessonIds[2],
+        createdAt: daysAgo(2),
+      },
+      {
+        userId: students[2].id,
+        lessonId: course1LessonIds[1],
+        createdAt: daysAgo(4),
+      },
     ])
     .run();
 
@@ -2104,7 +2145,9 @@ This course is still in draft while the cluster examples are rewritten against t
   markComplete(students[4].id, course1LessonIds[0], 12);
   markInProgress(students[4].id, course1LessonIds[1]);
 
-  console.log(`Created ${countRows(schema.lessonProgress)} lesson progress records.`);
+  console.log(
+    `Created ${countRows(schema.lessonProgress)} lesson progress records.`
+  );
 
   // ─── Quiz Attempts ───
 
